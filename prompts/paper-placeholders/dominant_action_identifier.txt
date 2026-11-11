@@ -1,3 +1,0 @@
-Section: §5.3.1 — Dominant action identifier
-Page: PDF 6 / printed 1062
-Purpose: Identification of the dominant action in a recorded chain.

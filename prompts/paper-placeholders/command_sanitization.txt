@@ -1,3 +1,0 @@
-Section: §5.2.2 — Command Sanitization
-Page: PDF 5 / printed 1061
-Purpose: Object-reference handling in action descriptions.

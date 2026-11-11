@@ -22,7 +22,7 @@ git credential-manager github login --username unixyhuang --device --no-ui
 
 ## 推送后的自动流程
 
-GitHub Actions 会运行两个桌面示例，核对目标状态，然后打包 ZIP。在仓库的 [Actions 页面](https://github.com/unixyhuang/blindfold/actions) 打开成功的运行，即可下载 `blindfold-artifact`。Actions 文件保留 30 天。
+GitHub Actions 会运行两个桌面任务，核对目标状态，然后打包 ZIP。在仓库的 [Actions 页面](https://github.com/unixyhuang/blindfold/actions) 打开成功的运行，即可下载 `blindfold-artifact`。Actions 文件保留 30 天。
 
 如需一个可长期引用的版本下载，在确认当前提交可发布后运行：
 
@@ -32,12 +32,3 @@ git push origin v0.1.0
 ```
 
 `v*` 标签会触发独立的 Release job，生成 Release 并附上 ZIP。新版本使用新的标签名。
-
-## 发布前需要作者填写的信息
-
-- 代码 LICENSE 的选择。
-- README 中希望公开的维护者联系方式。
-- 七个论文 prompt 占位文件中准备公开的正文。
-- 论文原始实现与当前桌面示例之间的覆盖范围说明。
-
-当前仓库提供可运行的桌面符号示例及本地 Ollama 客户端。完整论文实现的状态见 [README](../README.md)。

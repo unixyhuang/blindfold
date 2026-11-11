@@ -1,6 +1,6 @@
 """Ask local Ollama a single descriptive question using its /api/chat endpoint.
 
-Run with `python examples/ollama_local.py` or `python main.py ollama`.
+Run with `python ollama_client.py` or `python main.py ollama`.
 API reference: https://docs.ollama.com/api/chat
 """
 

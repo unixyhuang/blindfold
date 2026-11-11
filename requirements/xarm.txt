@@ -1,3 +1,0 @@
-# Optional device-side SDK; no camera drivers or firmware compatibility implied.
-# Can be installed in a separate device-control environment without core.txt.
-xarm-python-sdk==1.18.4

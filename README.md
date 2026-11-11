@@ -1,52 +1,75 @@
 # Blindfold · SenSys 2026
 
-This companion to [Jailbreaking Embodied LLMs via Action-Level Manipulation](https://doi.org/10.1145/3774906.3802758) includes a runnable tabletop verifier and a local Ollama client. The verifier illustrates the precondition and effect checks in §5.4 with two household tasks.
+Code accompanying **Jailbreaking Embodied LLMs via Action-Level Manipulation**. The repository provides symbolic action verification, structured task inputs, prompt resources and a local Ollama interface. [Paper](https://doi.org/10.1145/3774906.3802758)
 
-## Run from source
+## Requirements
 
-Use Python 3.11 and open a terminal in the extracted directory containing `main.py`. Both examples use the Python standard library.
+- Python 3.11.
+- For model access, Ollama running on the same host at `127.0.0.1:11434`, with the `llama3.1` model available.
+
+The Python code uses the standard library. Prepare the local model with:
 
 ```sh
-python main.py
-python main.py verify --task assets/examples/agentsafe_apple_counter.json
+ollama pull llama3.1
+ollama list
 ```
 
-The first command checks a record of placing an empty cup on a tray. The second checks an apple transfer. Both print JSON. On success, `status` is `passed`, `goal_met` is `true`, and `final_state.arm.held` is `null`. The object's `on` field names its destination. A rule failure exits with code 1 and lists the first failed rule. Invalid input exits with code 2. A failed placement rolls back the tentative pickup in the returned state.
+Start the Ollama application or, for a terminal deployment, run `ollama serve`. The client uses the local chat API. [Ollama documentation](https://docs.ollama.com/api/chat)
 
-## Call local llama3.1
-
-With Ollama running locally and the `llama3.1` tag available, run:
+## Run
 
 ```sh
+git clone https://github.com/unixyhuang/blindfold.git
+cd blindfold
+python main.py
+python main.py verify --task tasks/apple_to_counter.json
 python main.py ollama
 ```
 
-The [standalone client](examples/ollama_local.py) sends a short cup-location question to `POST http://127.0.0.1:11434/api/chat` with `model` set to `llama3.1` and `stream` set to `false`. It prints `message.content` from the JSON response. Ollama manages the local weights. A refused connection means the server is unreachable at the specified address. Start the Ollama app or `ollama serve` on the model host. Use `ollama list` to check its installed tags. [Ollama chat API](https://docs.ollama.com/api/chat)
+`python main.py` checks `tasks/cup_to_tray.json`. The `verify` command checks the selected task's recorded actions and prints the initial state, final state and any failed rule as JSON. Exit codes are 0 for a satisfied goal, 1 for a rule failure and 2 for invalid input. Failure reports restore the initial symbolic state.
 
-## Tasks and rules
+`python main.py ollama` sends a fixed cup-location question to the local model and prints its answer. The query checks the model connection. The verification command reads the action records in the task file.
 
-| Input file | Task and provenance |
+## Task inputs and verification
+
+Each task contains `task_id`, `instruction`, `scene`, `actions`, `goal` and provenance. The current rule set supports the cup-to-tray and apple-to-counter scenes with their documented entity IDs. It checks reachability, gripper occupancy, object condition, destination occupancy, action ordering and the final goal.
+
+| File | Task |
 | --- | --- |
-| [Cup and tray](assets/examples/task_bundle.json) | Original tabletop task with instruction, scene, steps and goal. Its organization draws on the [SafeAgentBench benign task records](https://huggingface.co/datasets/safeagentbench/SafeAgentBench/blob/main/safe_detailed.jsonl). |
-| [Apple and counter](assets/examples/agentsafe_apple_counter.json) | The instruction comes from the *Normal Instructions* example in [AGENTSAFE §4.2](https://arxiv.org/html/2506.14697v3#S4.SS2). The scene, entity IDs, actions and formal goal were written for this artifact. |
+| [tasks/cup_to_tray.json](tasks/cup_to_tray.json) | Place an empty cup on a tray and release it. |
+| [tasks/apple_to_counter.json](tasks/apple_to_counter.json) | Place an apple on the kitchen counter and release it. |
 
-Each JSON file contains the whole input. The verifier reads the recorded `actions` and the structured `scene` and `goal`. `instruction` and `provenance` document what the record represents. The included states use one gripper and a destination slot that holds one item.
+The apple instruction appears in AGENTSAFE's *Normal Instructions*. The symbolic scenes, action records and rules in this repository were authored for these tasks. The cup task uses an instruction/scene/action/goal organization informed by SafeAgentBench. [AGENTSAFE §4.2](https://arxiv.org/html/2506.14697v3#S4.SS2), [SafeAgentBench](https://huggingface.co/datasets/safeagentbench/SafeAgentBench/blob/main/safe_detailed.jsonl)
 
-| Rule | Conditions checked | State change |
-| --- | --- | --- |
-| Initial state | Expected entities start on their specified supports. The gripper is empty. The cup is empty or the apple is whole, and the item is at ambient temperature. | Snapshot the initial scene. |
-| `inspect` | The named item is in reach or held. | Preserve the scene. |
-| `pick` | The named item is on the table and within reach. The gripper is empty. | Remove the table support and set the gripper's held item. |
-| `place` | The gripper holds the named item. The task's destination is reachable and its placement slot is free. | Set the new support, occupy the slot and empty the gripper. |
-| Goal | The item is on the requested support, the destination is occupied and the gripper is empty. | Commit the resulting symbolic scene. |
+## Resources readers need to prepare
 
-The local rules and single-slot assumption are defined in [tabletop.py](demo/tabletop.py). These checks describe the supplied symbolic scene. Physical motion, sensing and collision checking would require a platform implementation.
+| Intended use | Preparation |
+| --- | --- |
+| Run the included task checks | Python 3.11 and the task files in this repository. |
+| Access the local model | A running Ollama server and the `llama3.1` model tag. Record the Ollama version and model digest when reporting results. |
+| Verify additional scenes | Supply complete initial states, action records and goals. Extend the schemas and precondition/effect rules in `verifier/tabletop.py` for the new entities and actions. |
+| Use the prompt resources | Populate the declared JSON fields and submit the rendered text through the selected model interface. The manifest lists the required fields. |
+| Reproduce the paper's full workflow | Obtain the authors' command-transformation and obfuscation implementation, paper-specific prompt resources, proxy preparation settings and environment integration. These components require a separate release. |
+| Run simulator-based tasks | Prepare the selected simulator version, scene assets and an adapter from its state/action API to the released rule set. |
 
-## Release files
+The current release checks fixed symbolic action records and exposes a model connection query. The planning and obfuscation pipeline and simulator adapters require the resources listed above.
 
-- [GitHub synchronization](docs/github-sync.md) describes the one-command local update and automatic Actions ZIP and tagged Release builds.
-- [Run status](docs/run-status.md) records the observed outcomes of the two tasks and the model connection check.
-- [Prompt inventory and rendering example](prompts/README.md) covers task-goal identification, final-state assessment and three record-review templates.
-- [Paper implementation notes](docs/implementation.md) describe the components of the research system.
-- [Optional dependency check](docs/environment-validation.md) records a separate PyTorch/Transformers CUDA smoke test. These packages are used by `scripts/check_environment.py`.
-- [Citation](CITATION.bib) gives the paper reference. The source-code license is pending author selection.
+## Repository layout
+
+```text
+main.py                  Command-line entrypoint
+ollama_client.py         Local llama3.1 chat interface
+verifier/                Symbolic state and action checks
+tasks/                   Complete task inputs
+prompts/                 Goal and record-review templates
+scripts/                 Git synchronization and ZIP packaging
+.github/workflows/       Automated verification, packaging and releases
+```
+
+## Repository updates and downloads
+
+After editing a local checkout, run `python scripts/sync_github.py --message "Update artifact"`. Each push triggers task verification and ZIP packaging. Pushing a `v*` tag creates a versioned GitHub Release. [Synchronization guide](docs/github-sync.md), [Actions](https://github.com/unixyhuang/blindfold/actions)
+
+## Citation
+
+Use [CITATION.bib](CITATION.bib) to cite the paper. The authors will specify the source-code license.

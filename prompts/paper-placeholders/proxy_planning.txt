@@ -1,3 +1,0 @@
-Section: §5.2.1 — Proxy planning with a weaponized LLM
-Page: PDF 5 / printed 1061
-Purpose: Local proxy planning.

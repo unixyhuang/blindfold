@@ -1,14 +1,14 @@
-"""Run the public tabletop verifier or the standalone local Ollama example."""
+"""Run symbolic action verification or query the local Ollama service."""
 
 import argparse
 import json
 import sys
 from pathlib import Path
 
-from demo.tabletop import verify_task
+from verifier.tabletop import verify_task
 
 
-DEFAULT_TASK = Path(__file__).resolve().parent / "assets" / "examples" / "task_bundle.json"
+DEFAULT_TASK = Path(__file__).resolve().parent / "tasks" / "cup_to_tray.json"
 
 
 def run_verifier(path):
@@ -28,11 +28,11 @@ def main():
     commands = parser.add_subparsers(dest="command")
     verifier = commands.add_parser("verify", help="Check a recorded tabletop task (default).")
     verifier.add_argument("--task", type=Path, default=DEFAULT_TASK, help="Path to the task JSON.")
-    commands.add_parser("ollama", help="Send a sample chat message to local llama3.1.")
+    commands.add_parser("ollama", help="Query the local llama3.1 model.")
     args = parser.parse_args()
     if args.command == "ollama":
-        from examples.ollama_local import main as ollama_example
-        return ollama_example()
+        from ollama_client import main as query_model
+        return query_model()
     return run_verifier(args.task if args.command == "verify" else DEFAULT_TASK)
 
 

@@ -1,3 +1,0 @@
-Section: §5.4.1 — Collaborative optimization
-Page: PDF 8 / printed 1064
-Purpose: Planner feedback following symbolic verification.
