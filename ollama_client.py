@@ -9,9 +9,12 @@ import json
 import sys
 
 
-def main() -> int:
+def main(model: str = "llama3.1") -> int:
+    if not isinstance(model, str) or not model.strip():
+        print("An Ollama model tag is required.", file=sys.stderr)
+        return 1
     payload = {
-        "model": "llama3.1",
+        "model": model,
         "messages": [{
             "role": "user",
             "content": "The empty cup is on the tray. Where is the cup? Reply in English.",
@@ -29,7 +32,7 @@ def main() -> int:
             detail = body.decode("utf-8", errors="replace").strip()[:300]
             print(f"Ollama returned HTTP {response.status}: {detail}", file=sys.stderr)
             if response.status == 404:
-                print("Check that llama3.1 is available on this server with ollama list.", file=sys.stderr)
+                print(f"Check that {model} is available on this server with ollama list.", file=sys.stderr)
             return 1
         reply = json.loads(body)
         message = reply.get("message") if isinstance(reply, dict) else None

@@ -28,11 +28,20 @@ def main():
     commands = parser.add_subparsers(dest="command")
     verifier = commands.add_parser("verify", help="Check a recorded tabletop task (default).")
     verifier.add_argument("--task", type=Path, default=DEFAULT_TASK, help="Path to the task JSON.")
-    commands.add_parser("ollama", help="Query the local llama3.1 model.")
+    ollama = commands.add_parser("ollama", help="Query a local Ollama model.")
+    ollama.add_argument("--model", default="llama3.1", help="Installed Ollama model tag.")
+    from finetuning.train import add_arguments, run_training
+    add_arguments(commands.add_parser("finetune", help="Train on the bundled household instruction/step pairs."))
     args = parser.parse_args()
+    if args.command == "finetune":
+        try:
+            return run_training(args)
+        except (ValueError, OSError, RuntimeError) as error:
+            print(f"Fine-tuning stopped: {error}", file=sys.stderr)
+            return 2
     if args.command == "ollama":
         from ollama_client import main as query_model
-        return query_model()
+        return query_model(args.model)
     return run_verifier(args.task if args.command == "verify" else DEFAULT_TASK)
 
 

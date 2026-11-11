@@ -81,9 +81,79 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  finetune:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Install CPU training dependencies
+        run: |
+          python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install -r requirements/finetune.txt
+          python -m pip check
+      - name: Train and reload a local tiny model
+        shell: bash
+        run: |
+          python -B - <<'PY'
+          import json
+          import subprocess
+          import sys
+          import tempfile
+          from pathlib import Path
+          import torch
+          from tokenizers import Tokenizer
+          from tokenizers.models import WordLevel
+          from tokenizers.pre_tokenizers import Whitespace
+          from tokenizers.trainers import WordLevelTrainer
+          from transformers import AutoModelForCausalLM, LlamaConfig, LlamaForCausalLM, PreTrainedTokenizerFast
+          from finetuning.data import load_training_pairs
+
+          pairs = load_training_pairs(Path.cwd())
+          backend = Tokenizer(WordLevel(unk_token="[UNK]"))
+          backend.pre_tokenizer = Whitespace()
+          backend.train_from_iterator(
+              (p["prompt"] + " " + p["answer"] for p in pairs),
+              WordLevelTrainer(special_tokens=["[PAD]", "[BOS]", "[EOS]", "[UNK]"]),
+          )
+          tokenizer = PreTrainedTokenizerFast(
+              tokenizer_object=backend, pad_token="[PAD]", bos_token="[BOS]",
+              eos_token="[EOS]", unk_token="[UNK]",
+          )
+          config = LlamaConfig(
+              vocab_size=len(tokenizer), hidden_size=32, intermediate_size=64,
+              num_hidden_layers=2, num_attention_heads=4, num_key_value_heads=2,
+              max_position_embeddings=1024, pad_token_id=tokenizer.pad_token_id,
+              bos_token_id=tokenizer.bos_token_id, eos_token_id=tokenizer.eos_token_id,
+          )
+          torch.manual_seed(42)
+          model = LlamaForCausalLM(config)
+          initial = model.get_input_embeddings().weight.detach().clone()
+          with tempfile.TemporaryDirectory() as directory:
+              base = Path(directory) / "base"
+              output = Path(directory) / "trained"
+              model.save_pretrained(base, safe_serialization=True)
+              tokenizer.save_pretrained(base)
+              subprocess.run([
+                  sys.executable, "-B", "main.py", "finetune", "--model", str(base),
+                  "--output-dir", str(output), "--device", "cpu", "--max-steps", "2",
+              ], check=True)
+              manifest = json.loads((output / "training_manifest.json").read_text())
+              assert manifest["training_pairs"] == 100 and manifest["optimizer_steps"] == 2
+              restored = AutoModelForCausalLM.from_pretrained(output / "final", local_files_only=True)
+              assert not torch.equal(initial, restored.get_input_embeddings().weight)
+              assert torch.isfinite(restored.get_input_embeddings().weight).all()
+              assert (output / "final/tokenizer.json").exists()
+          print("Passed standard SFT training, parameter updates and model reload.")
+          PY
+
   release:
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, finetune]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
