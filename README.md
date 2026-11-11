@@ -41,6 +41,8 @@ Each task contains `task_id`, `instruction`, `scene`, `actions`, `goal` and prov
 
 The apple instruction appears in AGENTSAFE's *Normal Instructions*. The symbolic scenes, action records and rules in this repository were authored for these tasks. The cup task uses an instruction/scene/action/goal organization informed by SafeAgentBench. [AGENTSAFE §4.2](https://arxiv.org/html/2506.14697v3#S4.SS2), [SafeAgentBench](https://huggingface.co/datasets/safeagentbench/SafeAgentBench/blob/main/safe_detailed.jsonl)
 
+The repository also includes [100 SafeAgentBench household tasks](tasks/safeagentbench/README.md), covering 75 scenes. Each record retains the original instruction, scene name, steps and final-state annotation. The dataset documentation provides a reading snippet, source revision, selection recipe and attribution. These records require SafeAgentBench's simulator and evaluator to run. The local tabletop verifier continues to use its two supported scene schemas.
+
 ## Resources readers need to prepare
 
 | Intended use | Preparation |
@@ -51,6 +53,7 @@ The apple instruction appears in AGENTSAFE's *Normal Instructions*. The symbolic
 | Use the prompt resources | Populate the declared JSON fields and submit the rendered text through the selected model interface. The manifest lists the required fields. |
 | Reproduce the paper's full workflow | Obtain the authors' command-transformation and obfuscation implementation, paper-specific prompt resources, proxy preparation settings and environment integration. These components require a separate release. |
 | Run simulator-based tasks | Prepare the selected simulator version, scene assets and an adapter from its state/action API to the released rule set. |
+| Run the 100 SafeAgentBench records | Prepare the upstream simulator, scene loading, action mapping and evaluator. Complete or otherwise handle missing goal annotations before scoring. |
 
 The current release checks fixed symbolic action records and exposes a model connection query. The planning and obfuscation pipeline and simulator adapters require the resources listed above.
 

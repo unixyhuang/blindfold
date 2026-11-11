@@ -43,6 +43,35 @@ jobs:
               assert report["final_state"]["arm"]["held"] is None, report
               print(f"Passed {report['task_id']}")
           PY
+      - name: Check the 100-task collection
+        shell: bash
+        run: |
+          python -B -S - <<'PY'
+          from collections import Counter
+          import hashlib
+          import json
+          from pathlib import Path
+
+          folder = Path("tasks/safeagentbench")
+          body = (folder / "tasks.jsonl").read_bytes()
+          tasks = [json.loads(line) for line in body.decode("utf-8").splitlines()]
+          selection = json.loads((folder / "selection.json").read_text(encoding="utf-8"))
+          assert len(tasks) == selection["records"] == 100
+          assert hashlib.sha256(body).hexdigest() == selection["records_sha256"]
+          assert len({task["task_id"] for task in tasks}) == 100
+          assert len({task["instruction"].strip().casefold() for task in tasks}) == 100
+          assert [task["source_row"] for task in tasks] == selection["source_rows"]
+          assert dict(Counter(task["scene_name"] for task in tasks)) == selection["selection"]["scene_counts"]
+          assert sum(task["final_state"] is None for task in tasks) == selection["missing_final_state"]
+          for task in tasks:
+              assert set(task) == {"task_id", "source_row", "instruction", "scene_name", "step", "final_state"}
+              assert isinstance(task["instruction"], str) and task["instruction"].strip()
+              assert isinstance(task["scene_name"], str) and task["scene_name"].startswith("FloorPlan")
+              assert isinstance(task["step"], list) and task["step"]
+              assert all(isinstance(step, str) and step.strip() for step in task["step"])
+              assert task["final_state"] is None or isinstance(task["final_state"], list)
+          print("Verified 100 SafeAgentBench records and selection provenance.")
+          PY
       - name: Build the ZIP
         run: python -B -S scripts/package_artifact.py --output dist/blindfold-artifact.zip
       - uses: actions/upload-artifact@v7
