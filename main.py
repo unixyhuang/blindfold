@@ -1,4 +1,4 @@
-"""Run symbolic action verification or query the local Ollama service."""
+"""Verify symbolic actions, run local Hugging Face inference, or fine-tune a model."""
 
 import argparse
 import json
@@ -28,8 +28,8 @@ def main():
     commands = parser.add_subparsers(dest="command")
     verifier = commands.add_parser("verify", help="Check a recorded tabletop task (default).")
     verifier.add_argument("--task", type=Path, default=DEFAULT_TASK, help="Path to the task JSON.")
-    ollama = commands.add_parser("ollama", help="Query a local Ollama model.")
-    ollama.add_argument("--model", default="llama3.1", help="Installed Ollama model tag.")
+    from hf_client import add_arguments as add_inference_arguments, run_inference
+    add_inference_arguments(commands.add_parser("infer", help="Query local Hugging Face model weights."))
     from finetuning.train import add_arguments, run_training
     add_arguments(commands.add_parser("finetune", help="Train on the bundled household instruction/step pairs."))
     args = parser.parse_args()
@@ -39,9 +39,12 @@ def main():
         except (ValueError, OSError, RuntimeError) as error:
             print(f"Fine-tuning stopped: {error}", file=sys.stderr)
             return 2
-    if args.command == "ollama":
-        from ollama_client import main as query_model
-        return query_model(args.model)
+    if args.command == "infer":
+        try:
+            return run_inference(args)
+        except (ValueError, OSError, RuntimeError) as error:
+            print(f"Inference stopped: {error}", file=sys.stderr)
+            return 2
     return run_verifier(args.task if args.command == "verify" else DEFAULT_TASK)
 
 

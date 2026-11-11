@@ -41,7 +41,7 @@ def run_training(args):
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments, set_seed
     except ImportError as error:
-        raise RuntimeError("Install the dependencies in requirements/finetune.txt to use finetune.") from error
+        raise RuntimeError("Install the dependencies in requirements/model.txt to use finetune.") from error
 
     use_cpu = args.device == "cpu"
     if args.precision == "float16" and (use_cpu or not torch.cuda.is_available()):

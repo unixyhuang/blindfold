@@ -4,7 +4,7 @@ The `finetune` command performs standard supervised fine-tuning on the 100 relea
 
 ## Prepare the training environment
 
-Use Python 3.11 and install the optional training dependencies in an isolated environment. For a compatible NVIDIA GPU and driver:
+Use Python 3.11 and install the shared inference/training dependencies in an isolated environment. For a compatible NVIDIA GPU and driver:
 
 ```sh
 python -m venv .venv
@@ -14,13 +14,13 @@ Activate it with `source .venv/bin/activate` on Linux, or `.\.venv\Scripts\Activ
 
 ```sh
 python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu126
-python -m pip install -r requirements/finetune.txt
+python -m pip install -r requirements/model.txt
 python -m pip check
 ```
 
 For a CPU training environment, replace the first installation command's index URL with `https://download.pytorch.org/whl/cpu`. CPU training speed and memory requirements depend on model size.
 
-Prepare a local Hugging Face model directory containing configuration, model weights and tokenizer files. Obtain the base checkpoint under its original model license and access terms. A local Ollama model tag identifies an inference deployment. The training command reads Hugging Face weights from the directory supplied with `--model`.
+Prepare a local Hugging Face model directory containing configuration, model weights and tokenizer files. Obtain the base checkpoint under its original model license and access terms. The [README](../README.md#prepare-llama-31) documents preparation of `meta-llama/Llama-3.1-8B-Instruct`. Training and inference read Hugging Face weights directly from the directory supplied with `--model`.
 
 ## Train
 
@@ -30,7 +30,7 @@ From the repository root:
 python main.py finetune --model /path/to/huggingface-model --output-dir weights/local-slm
 ```
 
-The default configuration uses full-parameter training, float32, one epoch, batch size 1, maximum length 1024, learning rate `2e-5` and seed 42. These are release defaults selected for this implementation. Size the training device for model parameters, gradients, optimizer state and activations. Full Llama-3.1-8B training requires substantially more memory than Ollama's quantized inference deployment.
+The default configuration uses full-parameter training, float32, one epoch, batch size 1, maximum length 1024, learning rate `2e-5` and seed 42. These are release defaults selected for this implementation. Size the training device for model parameters, gradients, optimizer state and activations. Full Llama-3.1-8B training requires substantially more memory than inference; a 16 GB GPU cannot hold the default full-parameter training state.
 
 The CLI supports `--precision bfloat16` or `--precision float16` for compatible hardware, `--device cpu`, `--batch-size`, `--gradient-accumulation`, `--epochs`, `--learning-rate`, `--max-length` and a positive `--max-steps` limit. Run `python main.py finetune --help` for the full interface. Choose an empty output directory for every run.
 
@@ -59,21 +59,20 @@ weights/local-slm/
 
 The default `weights/` directory is ignored by Git and excluded from release ZIPs.
 
-## Use the trained model with Ollama
+## Load the trained model for inference
 
-For a supported architecture, create a `Modelfile` whose `FROM` points to the absolute path of `weights/local-slm/final`, then run:
+The final directory contains a complete Hugging Face model and tokenizer. Load it directly through the same inference entrypoint as the base checkpoint:
 
 ```sh
-ollama create blindfold-slm -f Modelfile
-ollama run blindfold-slm
-python main.py ollama --model blindfold-slm
+python main.py infer --model weights/local-slm/final
+python main.py infer --model weights/local-slm/final --device cpu
 ```
 
-The model is trained and saved in Safetensors format. Ollama's import support depends on architecture and installed version. Preserve the tokenizer's chat template and verify the imported model's response format. [Ollama import documentation](https://docs.ollama.com/import)
+The command preserves the tokenizer's chat template, uses greedy decoding and prints only the generated answer to a fixed descriptive question. Automatic placement retains the checkpoint's dtype; CPU execution uses float32. This query checks model loading and generation. Evaluate learned task-step accuracy separately using held-out tasks.
 
 ## Validation
 
-The complete CLI path was exercised using a locally generated random two-layer Llama and all 100 tokenized task pairs. Two optimizer steps passed on CPU and on the RTX 4070 Ti SUPER with bfloat16 CUDA training. Checkpoint saving, final-weight reload and changes to trainable parameters were checked. These runs validate software integration. Llama-3.1-8B training quality, full-dataset evaluation and live Ollama import remain to be measured using the selected base checkpoint.
+The training CLI was exercised using a locally generated random two-layer Llama and all 100 tokenized task pairs. Two optimizer steps passed on CPU and on the RTX 4070 Ti SUPER with bfloat16 CUDA training. Checkpoint saving, final-weight reload and changes to trainable parameters were checked. CI also runs the inference CLI on the saved final model. These checks validate software integration. Actual Llama-3.1-8B loading and generation, training quality and full-dataset evaluation remain to be measured using the selected base checkpoint.
 
 ## Provenance
 

@@ -1,4 +1,4 @@
-# Optional environment for the finetune command, Python 3.11.
+# Shared environment for Hugging Face inference and fine-tuning, Python 3.11.
 # Install the appropriate PyTorch build first, then install this file.
 torch==2.8.0
 transformers==4.57.6
