@@ -1,6 +1,6 @@
-# Blindfold · Public implementation examples
+# Blindfold · SenSys 2026
 
-This companion to [Jailbreaking Embodied LLMs via Action-Level Manipulation](https://doi.org/10.1145/3774906.3802758) includes a runnable tabletop verifier and a local Ollama client. The verifier illustrates the precondition and effect checks in §5.4 with two household tasks. The original adversarial planner, obfuscator, refinement pipeline and platform adapters are outside this implementation.
+This companion to [Jailbreaking Embodied LLMs via Action-Level Manipulation](https://doi.org/10.1145/3774906.3802758) includes a runnable tabletop verifier and a local Ollama client. The verifier illustrates the precondition and effect checks in §5.4 with two household tasks.
 
 ## Run from source
 
