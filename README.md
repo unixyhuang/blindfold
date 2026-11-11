@@ -80,8 +80,6 @@ The implementation masks prompt and padding labels, optimizes the causal languag
 
 As an alternative research approach to local SLM fine-tuning, [*Catastrophic Jailbreak of Open-source LLMs via Exploiting Generation*](https://arxiv.org/abs/2310.06987) studies generation-based methods without updating model weights. For the original implementation and reproduction instructions, refer to the authors' official repository: [Princeton-SysML/Jailbreak_LLM](https://github.com/Princeton-SysML/Jailbreak_LLM).
 
-This is an external reference implementation with its own environment. Its code is maintained upstream; compatibility with Llama-3.1 and this artifact has not been validated.
-
 ## Task inputs and verification
 
 Each task contains `task_id`, `instruction`, `scene`, `actions`, `goal` and provenance. The current rule set supports the cup-to-tray and apple-to-counter scenes with their documented entity IDs. It checks reachability, gripper occupancy, object condition, destination occupancy, action ordering and the final goal.
@@ -95,7 +93,7 @@ The apple instruction appears in AGENTSAFE's *Normal Instructions*. The symbolic
 
 The repository also includes [100 SafeAgentBench household tasks](tasks/safeagentbench/README.md), covering 75 scenes. Each record retains the original instruction, scene name, steps and final-state annotation. The dataset documentation provides a reading snippet, source revision, selection recipe and attribution. These records require SafeAgentBench's simulator and evaluator to run. The local tabletop verifier continues to use its two supported scene schemas.
 
-## Resources readers need to prepare
+## Resources to prepare
 
 | Intended use | Preparation |
 | --- | --- |
