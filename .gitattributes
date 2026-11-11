@@ -1,0 +1,2 @@
+# Keep dataset bytes stable for the recorded SHA256 across Git checkout platforms.
+*.jsonl text eol=lf
