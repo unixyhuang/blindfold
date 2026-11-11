@@ -43,6 +43,8 @@ jobs:
               assert report["final_state"]["arm"]["held"] is None, report
               print(f"Passed {report['task_id']}")
           PY
+      - name: Check benchmark traces and observation rules
+        run: python -B -S -m unittest discover -s tests
       - name: Check the 100-task collection
         shell: bash
         run: |

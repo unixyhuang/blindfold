@@ -5,29 +5,46 @@ import json
 import sys
 from pathlib import Path
 
+from verifier.collection import assess_record, exit_code, read_json, verify_collection
 from verifier.tabletop import verify_task
 
 
 DEFAULT_TASK = Path(__file__).resolve().parent / "tasks" / "cup_to_tray.json"
 
 
-def run_verifier(path):
+def run_verifier(path=DEFAULT_TASK, *, benchmark=None, task_id=None, scene=None, metadata=None):
     try:
-        with path.open(encoding="utf-8-sig") as task_file:
-            bundle = json.load(task_file)
+        if benchmark == "safeagentbench":
+            report = verify_collection(task_id, scene, metadata)
+        else:
+            if task_id is not None or scene is not None:
+                raise ValueError("--task-id and --scene require --benchmark safeagentbench.")
+            bundle = read_json(path)
+            if isinstance(bundle, dict) and "scene" not in bundle and ("step" in bundle or "scene_name" in bundle):
+                report = assess_record(bundle, metadata)
+            elif metadata is not None:
+                raise ValueError("--metadata requires a SafeAgentBench task.")
+            else:
+                report = verify_task(bundle)
     except (OSError, ValueError) as exc:
         print(json.dumps({"status": "invalid_input", "error": str(exc)}), file=sys.stderr)
         return 2
-    report = verify_task(bundle)
     print(json.dumps(report, indent=2))
-    return {"passed": 0, "failed": 1, "invalid_input": 2}[report["status"]]
+    return exit_code(report)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command")
-    verifier = commands.add_parser("verify", help="Check a recorded tabletop task (default).")
-    verifier.add_argument("--task", type=Path, default=DEFAULT_TASK, help="Path to the task JSON.")
+    verifier = commands.add_parser("verify", help="Check recorded tabletop or SafeAgentBench tasks.")
+    source = verifier.add_mutually_exclusive_group()
+    source.add_argument("--task", type=Path, help="Path to a single task JSON object (default: cup to tray).")
+    source.add_argument("--benchmark", choices=["safeagentbench"], help="Check the bundled collection.")
+    select = verifier.add_mutually_exclusive_group()
+    select.add_argument("--task-id", help="Select one benchmark task by its exact ID.")
+    select.add_argument("--scene", help="Select all benchmark tasks for this FloorPlan name.")
+    verifier.add_argument("--metadata", type=Path,
+                          help="Final AI2-THOR event metadata JSON for a single SafeAgentBench task.")
     from hf_client import add_arguments as add_inference_arguments, run_inference
     add_inference_arguments(commands.add_parser("infer", help="Query local Hugging Face model weights."))
     from finetuning.train import add_arguments, run_training
@@ -45,7 +62,10 @@ def main():
         except (ValueError, OSError, RuntimeError) as error:
             print(f"Inference stopped: {error}", file=sys.stderr)
             return 2
-    return run_verifier(args.task if args.command == "verify" else DEFAULT_TASK)
+    if args.command == "verify":
+        return run_verifier(args.task or DEFAULT_TASK, benchmark=args.benchmark,
+                            task_id=args.task_id, scene=args.scene, metadata=args.metadata)
+    return run_verifier()
 
 
 if __name__ == "__main__":

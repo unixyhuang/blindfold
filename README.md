@@ -61,7 +61,7 @@ python main.py verify --task tasks/apple_to_counter.json
 python main.py infer --model weights/Llama-3.1-8B-Instruct
 ```
 
-`python main.py` checks `tasks/cup_to_tray.json`. The `verify` command checks the selected task's recorded actions and prints the initial state, final state and any failed rule as JSON. Exit codes are 0 for a satisfied goal, 1 for a rule failure and 2 for invalid input. Failure reports restore the initial symbolic state.
+`python main.py` checks `tasks/cup_to_tray.json`. For the two tabletop tasks, `verify` prints the initial state, final state and any failed rule as JSON. Exit codes are 0 for a satisfied tabletop goal, 1 for a rule failure and 2 for invalid input. Failure reports restore the initial symbolic state.
 
 `infer` loads `AutoTokenizer` and `AutoModelForCausalLM`, applies the tokenizer's chat template and answers a fixed cup-location question using greedy decoding. It prints only the generated answer, without the input prompt. `--max-new-tokens` defaults to 32; `--device cpu` selects CPU execution. Tokenizers without a chat template use the same user/assistant text boundary as the SFT loader. The query checks local model loading and generation. The verification command reads the action records in the task file.
 
@@ -82,7 +82,7 @@ As an alternative research approach to local SLM fine-tuning, [*Catastrophic Jai
 
 ## Task inputs and verification
 
-Each task contains `task_id`, `instruction`, `scene`, `actions`, `goal` and provenance. The current rule set supports the cup-to-tray and apple-to-counter scenes with their documented entity IDs. It checks reachability, gripper occupancy, object condition, destination occupancy, action ordering and the final goal.
+The two tabletop tasks contain `task_id`, `instruction`, `scene`, `actions`, `goal` and provenance. Their verifier checks reachability, gripper occupancy, object condition, destination occupancy, action ordering and the final goal.
 
 | File | Task |
 | --- | --- |
@@ -91,7 +91,15 @@ Each task contains `task_id`, `instruction`, `scene`, `actions`, `goal` and prov
 
 The apple instruction appears in AGENTSAFE's *Normal Instructions*. The symbolic scenes, action records and rules in this repository were authored for these tasks. The cup task uses an instruction/scene/action/goal organization informed by SafeAgentBench. [AGENTSAFE §4.2](https://arxiv.org/html/2506.14697v3#S4.SS2), [SafeAgentBench](https://huggingface.co/datasets/safeagentbench/SafeAgentBench/blob/main/safe_detailed.jsonl)
 
-The repository also includes [100 SafeAgentBench household tasks](tasks/safeagentbench/README.md), covering 75 scenes. Each record retains the original instruction, scene name, steps and final-state annotation. The dataset documentation provides a reading snippet, source revision, selection recipe and attribution. These records require SafeAgentBench's simulator and evaluator to run. The local tabletop verifier continues to use its two supported scene schemas.
+The SafeAgentBench verifier covers all 100 recorded tasks across 75 FloorPlans. It checks action ordering, hand occupancy, placement, container state and annotated goals using Python's standard library. Select a task, a scene, or the entire collection:
+
+```sh
+python main.py verify --benchmark safeagentbench --task-id sab-safe-0085
+python main.py verify --benchmark safeagentbench --scene FloorPlan203
+python main.py verify --benchmark safeagentbench
+```
+
+The batch reports 29 goals supported by the recorded actions, one contradiction and 70 unknown goals. Of the unknowns, 65 have no goal annotation. A full batch returns exit code 1 because `sab-safe-0122` closes a cabinet whose annotation requires it to be open. To check a task's goal against observations from a simulator run, pass `--metadata final-event.json` with its task ID. The [dataset and verification guide](tasks/safeagentbench/README.md#verify-the-records) explains the assumptions, output fields and snapshot format.
 
 ## Resources to prepare
 
@@ -100,11 +108,11 @@ The repository also includes [100 SafeAgentBench household tasks](tasks/safeagen
 | Run the included task checks | Python 3.11 and the task files in this repository. |
 | Access the local model | Llama-3.1 Hugging Face weights and tokenizer, model access approval, `requirements/model.txt` and sufficient GPU/host memory. Record the model revision. |
 | Fine-tune a local SLM | The same model environment and enough memory for parameters, gradients, optimizer state and activations during full-parameter training. |
-| Verify additional scenes | Supply complete initial states, action records and goals. Extend the schemas and precondition/effect rules in `verifier/tabletop.py` for the new entities and actions. |
+| Check additional records | Supply a single SafeAgentBench JSON record using the documented vocabulary, or a supported tabletop task, to `verify --task PATH`. |
 | Use the prompt resources | Populate the declared JSON fields and submit the rendered text through the selected model interface. The manifest lists the required fields. |
 | Reproduce the paper's full workflow | Obtain the authors' command-transformation and obfuscation implementation, paper-specific prompt resources, proxy preparation settings and environment integration. These components require a separate release. |
 | Run simulator-based tasks | Prepare the selected simulator version, scene assets and an adapter from its state/action API to the released rule set. |
-| Run the 100 SafeAgentBench records | Prepare the upstream simulator, scene loading, action mapping and evaluator. Complete or otherwise handle missing goal annotations before scoring. |
+| Check the 100 SafeAgentBench records offline | Use the bundled collection with Python 3.11. For an observed goal check, supply final event metadata from the selected task's simulator run. |
 
 The current release checks fixed symbolic action records and provides ordinary model inference and SFT. The planning and obfuscation pipeline and simulator adapters require the resources listed above.
 
