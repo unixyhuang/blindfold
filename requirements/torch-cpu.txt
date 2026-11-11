@@ -1,0 +1,5 @@
+# Separate CPU-only wheel profile not installed in this validation.
+# Linux/Windows x86-64 CPU profile; install before core.txt.
+# Intended for environment/import checks, not practical 8B inference performance.
+--index-url https://download.pytorch.org/whl/cpu
+torch==2.8.0+cpu

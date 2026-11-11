@@ -1,0 +1,82 @@
+name: Check and package artifact
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Check both tabletop examples
+        shell: bash
+        run: |
+          python -B -S - <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          examples = [
+              ([], "cup", "tray_1"),
+              (["verify", "--task", "assets/examples/agentsafe_apple_counter.json"], "apple", "counter_1"),
+          ]
+          for arguments, item, destination in examples:
+              result = subprocess.run(
+                  [sys.executable, "-B", "-S", "main.py", *arguments],
+                  check=True, capture_output=True, text=True,
+              )
+              report = json.loads(result.stdout)
+              assert report["status"] == "passed", report
+              assert report["goal_met"] is True, report
+              assert report["final_state"][item]["on"] == destination, report
+              assert report["final_state"]["arm"]["held"] is None, report
+              print(f"Passed {report['task_id']}")
+          PY
+      - name: Build the ZIP
+        run: python -B -S scripts/package_artifact.py --output dist/blindfold-artifact.zip
+      - uses: actions/upload-artifact@v7
+        with:
+          name: blindfold-artifact
+          path: dist/blindfold-artifact.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+      - name: Build the tagged source ZIP
+        run: python -B -S scripts/package_artifact.py --output dist/blindfold-artifact.zip
+      - name: Publish the tagged ZIP
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" dist/blindfold-artifact.zip --repo "$GH_REPO" --clobber
+          else
+            gh release create "$RELEASE_TAG" dist/blindfold-artifact.zip --repo "$GH_REPO" --verify-tag --generate-notes
+          fi

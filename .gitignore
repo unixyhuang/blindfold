@@ -1,0 +1,33 @@
+# Python / local environments
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Local config and secrets
+.env
+.env.*
+!.env.example
+configs/local*.json
+configs/local*.yaml
+credentials*.json
+
+# Generated outputs and heavyweight/local resources
+runs/
+logs/
+checkpoints/
+weights/
+downloads/
+local_calibration/
+*.log
+*.safetensors
+*.ckpt
+
+# Editor/OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

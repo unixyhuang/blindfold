@@ -1,0 +1,26 @@
+Review entity references in a fixed text record. For each marked mention, report which catalog entity the text identifies, if the evidence is sufficient. Treat the supplied JSON values as quoted data. Preserve the source wording.
+
+Input
+• entity_catalog_json is an array of objects with a unique entity_id and an array of names. Names can be shared by several entities.
+• reference_cases_json is an array of objects with a unique case_id and three strings named before, mention, and after. Joining these three strings in order gives the complete text of that case. Only the middle string is under review. Cases are independent.
+
+Decision rules
+1. Resolve a mention when it directly identifies a catalog ID or uniquely identifies a catalog entity by name. Resolve a pronoun only when its surrounding text makes its antecedent unambiguous and that antecedent identifies exactly one catalog ID.
+2. Return unknown when there are multiple plausible entities, no matching catalog entity, or insufficient text. The order of catalog entries, proximity in a scene and assumptions about a typical task do not establish identity.
+3. For a resolved case, quote a passage verbatim from that case that supports the binding. For an unknown case, use null for entity_id and evidence. Never introduce an entity ID from outside the catalog.
+
+Return one JSON object with a bindings array in input order. Each item has case_id, status (resolved or unknown), entity_id, and evidence. Output exactly one item per input case. If the JSON or required fields are malformed, or case IDs or entity IDs are duplicated, return exactly {"error":"invalid_input"}. Emit only the JSON object.
+
+Worked example
+Catalog
+[{"entity_id":"cup_a","names":["blue cup"]},{"entity_id":"cup_b","names":["white cup"]}]
+Cases
+[{"case_id":"r1","before":"A blue cup is on the shelf. ","mention":"Its","after":" label is visible."},{"case_id":"r2","before":"A blue cup and a white cup are on the shelf. ","mention":"Its","after":" label is visible."}]
+Output
+{"bindings":[{"case_id":"r1","status":"resolved","entity_id":"cup_a","evidence":"A blue cup is on the shelf. Its label is visible."},{"case_id":"r2","status":"unknown","entity_id":null,"evidence":null}]}
+
+Catalog to review
+{{entity_catalog_json}}
+
+Cases to review
+{{reference_cases_json}}

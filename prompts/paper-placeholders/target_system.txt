@@ -1,0 +1,3 @@
+Section: §4.1 — Study Setup; §6.1 — Simulated Environment Implementation
+Page: PDF 3 / printed 1059 (§4.1); PDF 8 / printed 1064 (§6.1)
+Purpose: System prompt for the ProgPrompt target framework.

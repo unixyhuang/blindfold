@@ -1,0 +1,13 @@
+{
+  "_status": "Illustrative symbolic chain only; requires author-supplied schemas and rules.",
+  "scene_id": "neutral_cup_example",
+  "actions": [
+    {
+      "name": "pick",
+      "parameters": {
+        "agent": "agent_1",
+        "object": "cup_1"
+      }
+    }
+  ]
+}

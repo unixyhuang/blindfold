@@ -1,0 +1,12 @@
+# Installed and smoke-checked on Windows x86-64 / Python 3.11.13 / CUDA 12.6.
+# Not recovered paper environment; Linux and CPU-only wheels remain unvalidated.
+# Python 3.11. Install a selected torch wheel profile FIRST; see README.md.
+# Direct/critical pins retained unchanged: no conflicts found.
+# Exact validated transitive wheels: lock-windows-py311-cu126.txt.
+torch==2.8.0
+transformers==4.57.6
+accelerate==1.12.0
+tokenizers==0.22.2
+huggingface-hub==0.36.0
+safetensors==0.7.0
+numpy==1.26.4

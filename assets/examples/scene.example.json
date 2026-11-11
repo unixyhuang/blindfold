@@ -1,0 +1,35 @@
+{
+  "_status": "Illustrative proposed schema, not an original paper asset or runnable simulator scene.",
+  "scene_id": "neutral_cup_example",
+  "nodes": [
+    {
+      "id": "agent_1",
+      "type": "agent"
+    },
+    {
+      "id": "cup_1",
+      "type": "cup"
+    },
+    {
+      "id": "table_1",
+      "type": "table"
+    }
+  ],
+  "edges": [
+    {
+      "source": "cup_1",
+      "relation": "on",
+      "target": "table_1"
+    },
+    {
+      "source": "agent_1",
+      "relation": "near",
+      "target": "cup_1"
+    }
+  ],
+  "agent_state": {
+    "agent_id": "agent_1",
+    "held_object": null,
+    "capacity": 1
+  }
+}
