@@ -21,19 +21,13 @@ This public Unsloth distribution uses the Llama 3.1 Community License. It preser
 python main.py progprompt benchmark --model weights/llama31-8b-instruct-nf4 --batch-size 10 --max-new-tokens 256 --output-dir runs/llama31-safeagentbench-100
 ```
 
-The runner loads the local checkpoint once and formats each prompt with its Hugging Face chat template. The recorded run used automatic GPU placement, batches of 10, greedy decoding and a limit of 256 new tokens per task. Completed batches are saved to disk. Repeating the command with the same inputs and output directory resumes the run. To check one task, add `--task-id sab-safe-0085` and select a separate output directory.
+The runner loads the local checkpoint once and formats each prompt with its Hugging Face chat template. This command uses automatic GPU placement, batches of 10, greedy decoding and a limit of 256 new tokens per task. Completed batches are saved to disk. Repeating the command with the same inputs and output directory resumes the run. To check one task, add `--task-id sab-safe-0085` and select a separate output directory.
 
 The bundled inventory covers all 75 FloorPlans using per-room object types from ALFRED with AI2-THOR 2.1.0. SafeAgentBench uses AI2-THOR 5.0.0. A type can therefore be absent from the supplied list yet exist in the benchmark room. The lists describe object types and omit initial instance states, positions and reachability. To use inventories exported for your simulator version, pass `--inventories PATH`. Use the bundled JSON structure with a `source` entry identifying the export and an `inventories` mapping from FloorPlan names to arrays of object type names. The runner intersects each list with its supported vocabulary. [Bundled inventory and provenance](../../tasks/safeagentbench/scene_objects.json) · [Pinned ALFRED layouts](https://github.com/askforalfred/alfred/tree/f91f4c0c96c7a29f33d0557f86b0a21035379b3b/gen/layouts)
 
 ## Read the output
 
-To reproduce the published scores without loading a model, run the offline replay command from the repository root:
-
-```sh
-python main.py progprompt replay-benchmark --output-dir runs/replayed-safeagentbench
-```
-
-The published snapshot stores the [raw completions and input hashes](../../results/llama31-safeagentbench-100/README.md), aggregate scores and the failure report. Replay checks the input fingerprints and task IDs, then rebuilds the four derived reports below in the selected output directory. A fresh model run writes all six files.
+The benchmark command writes the following six files to the selected `--output-dir`. Generated reports and model responses are excluded from the source distribution.
 
 The verifier accepts a bare function or one unambiguous Python code block. Text surrounding a single block is retained in the raw response. The extracted body is checked verbatim. Multiple competing code blocks are reported as invalid. For comparison, `status_if_surrounding_prose_rejected` gives the counts under a response-format rule that also rejects explanatory prose.
 

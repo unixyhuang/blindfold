@@ -17,6 +17,7 @@ credentials*.json
 
 # Generated outputs and heavyweight/local resources
 runs/
+results/
 logs/
 checkpoints/
 weights/

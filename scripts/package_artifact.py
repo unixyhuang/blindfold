@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED_DIRECTORIES = {
     ".git", ".venv", "venv", "__pycache__", ".pytest_cache", ".idea", ".vscode",
-    "build", "dist", "runs", "logs", "checkpoints", "weights", "downloads",
+    "build", "dist", "runs", "results", "logs", "checkpoints", "weights", "downloads",
     "local_calibration",
 }
 EXCLUDED_FILES = (

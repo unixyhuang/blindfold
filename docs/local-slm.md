@@ -72,7 +72,7 @@ The command preserves the tokenizer's chat template, uses greedy decoding and pr
 
 ## Validation
 
-CI trains a small Llama model for two optimizer steps and checks that its parameters change and its saved checkpoint can generate text. Full-parameter Llama-3.1-8B training and held-out accuracy have not been evaluated. The published 100-task inference run used the NF4 quantization of Llama-3.1-8B-Instruct. [Inference run record](../results/llama31-safeagentbench-100/README.md)
+CI trains a small Llama model for two optimizer steps and checks that its parameters change and its saved checkpoint can generate text. Full-parameter Llama-3.1-8B training and held-out accuracy have not been evaluated. The separate [inference guide](../prompts/progprompt/safeagentbench.md) describes NF4 model preparation and ordinary task planning.
 
 ## Provenance
 

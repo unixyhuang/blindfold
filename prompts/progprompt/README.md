@@ -1,6 +1,6 @@
 # ProgPrompt resources
 
-The local planner combines an action interface, available objects, demonstration programs, and a task description. Target and proxy planning use this shared planner for the ordinary task domains provided by the artifact. Prompt resources and source records are collected in this directory. [ProgPrompt project](https://progprompt.github.io/) · [Blindfold paper](https://doi.org/10.1145/3774906.3802758)
+The local planner combines an action interface, available objects, demonstration programs, and a task description. Ordinary task planning uses this shared planner. Prompt resources and source records are collected in this directory; the Python implementation is in [`../../progprompt/`](../../progprompt/). [ProgPrompt project](https://progprompt.github.io/) · [Blindfold paper](https://doi.org/10.1145/3774906.3802758)
 
 ## Templates
 
@@ -28,7 +28,7 @@ python main.py progprompt replay --task apple_to_counter --program runs/apple.pl
 
 The model generates a continuation of the task function. The runner preserves the raw completion and saves a common `def plan():` entry point for replay. `cup_to_tray` and `apple_to_counter` have complete symbolic initial states. [Model environment](../../README.md#requirements)
 
-The task planning template uses a room's object-type list and the task instruction to produce a SafeAgentBench program. It retains the text used for the published batch so that its prompt fingerprints remain reproducible. The batch runner checks the generated steps against the reviewed goal. The [100-task guide](safeagentbench.md) documents the NF4 checkpoint, inventory provenance, run parameters, and output reports.
+The task planning template uses a room's object-type list and the task instruction to produce a SafeAgentBench program. The batch runner checks the generated steps against the reviewed goal. The [100-task guide](safeagentbench.md) documents the NF4 checkpoint, inventory provenance, run parameters, and output reports.
 
 ## Verifier feedback
 
@@ -69,5 +69,7 @@ The dominant-action identification slot is registered under `placeholders` in [m
 - [Command sanitization](command_sanitization.md), §5.2.2, printed page 1061.
 - [Dominant action identification](dominant_action_identification.md), §5.3.1, printed page 1062.
 - [Cover branch creation and completion](cover_branch_generation.md), §5.3.2, printed page 1063.
+
+Run `python main.py progprompt check-prompts` to inspect template files, field contracts, and implemented entry points. It performs no model calls and exits with code 1 while the full paper workflow is incomplete. Filling the dominant-action text alone does not add its runtime handler or the other missing paper components.
 
 The paper prints simplified material for several roles. The public executable templates in this directory are independently authored adaptations, with behavior defined by their input contracts and the associated symbolic checks.

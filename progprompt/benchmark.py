@@ -15,7 +15,6 @@ from verifier.safeagentbench import OBJECT_TYPES
 
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "prompts/progprompt/task_planning.txt"
-PUBLISHED_RUN = Path(__file__).resolve().parents[1] / "results/llama31-safeagentbench-100"
 
 
 def render_instruction(instruction, scene, objects, template):
@@ -156,26 +155,6 @@ def run(args):
                 answers[record["task_id"]] = answer
             write_json(answers_path, answers)
             print(f"Generated {len(answers)}/{len(jobs)} plans", file=sys.stderr, flush=True)
-    return score_batch(jobs, answers, folder)
-
-
-def replay_published(folder):
-    """Rebuild the reports for the complete published batch with the standard library."""
-    if folder.resolve().is_relative_to(PUBLISHED_RUN.resolve()):
-        raise ValueError("Choose an output directory outside the published run.")
-    jobs, inputs = prepare_jobs(COLLECTION / "scene_objects.json")
-    manifest = json.loads((PUBLISHED_RUN / "manifest.json").read_text(encoding="utf-8"))
-    for field, expected in inputs.items():
-        if manifest.get(field) != expected:
-            raise ValueError(f"Published run does not match the current inputs: {field}.")
-    answers = json.loads((PUBLISHED_RUN / "completions.json").read_text(encoding="utf-8"))
-    if (not isinstance(answers, dict) or set(answers) != set(inputs["prompt_sha256"])
-            or any(not isinstance(answer, str) for answer in answers.values())):
-        raise ValueError("Expected one raw response for every published task ID.")
-    if (folder / "manifest.json").exists() and json.loads(
-            (folder / "manifest.json").read_text(encoding="utf-8")) != manifest:
-        raise ValueError("The output directory belongs to another generation run.")
-    folder.mkdir(parents=True, exist_ok=True)
     return score_batch(jobs, answers, folder)
 
 

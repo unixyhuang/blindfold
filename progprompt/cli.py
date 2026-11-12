@@ -45,6 +45,7 @@ def as_program(response):
 
 def add_arguments(parser):
     commands = parser.add_subparsers(dest="operation", required=True)
+    commands.add_parser("check-prompts", help="Inspect prompt resources and paper workflow readiness without loading a model.")
     render = commands.add_parser("render", help="Print the exact prompt sent to the model.")
     generate = commands.add_parser("generate", help="Generate a program locally and check it.")
     replay = commands.add_parser("replay", help="Check a saved program on its symbolic scene.")
@@ -62,8 +63,6 @@ def add_arguments(parser):
     fuse.add_argument("--device", choices=["auto", "cpu"], default="auto")
     from progprompt import benchmark
     benchmark.add_arguments(commands.add_parser("benchmark", help="Generate and verify SafeAgentBench plans."))
-    replay_batch = commands.add_parser("replay-benchmark", help="Verify the published 100 model responses offline.")
-    replay_batch.add_argument("--output-dir", type=Path, required=True, help="Directory for the rebuilt reports.")
     for command in (render, generate, replay, fuse):
         command.add_argument("--task", choices=sorted(TASKS), default="cup_to_tray")
     generate.add_argument("--model", type=Path, required=True, help="Local Hugging Face checkpoint.")
@@ -74,13 +73,14 @@ def add_arguments(parser):
 
 
 def run(args):
+    if args.operation == "check-prompts":
+        from progprompt import resources
+        return resources.run(args)
     if args.operation == "feedback":
         from progprompt import feedback
         return feedback.run(args)
-    if args.operation in {"benchmark", "replay-benchmark"}:
+    if args.operation == "benchmark":
         from progprompt import benchmark
-        if args.operation == "replay-benchmark":
-            return benchmark.replay_published(args.output_dir)
         return benchmark.run(args)
     bundle = json.loads((ROOT / "tasks" / TASKS[args.task]).read_text(encoding="utf-8"))
     if args.operation == "fuse":
