@@ -12,7 +12,7 @@ Version 1.0 is a rolling release. For an exact citation of the code, use the Git
 | --- | --- |
 | [main.py](main.py) | Command-line entry point for verification, planning, inference, and fine-tuning |
 | [tasks/](tasks/) | Tabletop scenes, SafeAgentBench records, reviewed goals, and room inventories |
-| [prompts/progprompt/](prompts/progprompt/) · [progprompt/](progprompt/) | Unified prompt resources, domain action generation, verifier feedback, and chain fusion |
+| [prompts/progprompt/](prompts/progprompt/) · [progprompt/](progprompt/) | Task planning, verifier feedback, chain fusion, and paper prompt source records |
 | [verifier/](verifier/) | Action preconditions, state transitions, and goal checks |
 | [finetuning/](finetuning/) · [requirements/](requirements/) | Supervised fine-tuning and model dependencies |
 | [results/](results/llama31-safeagentbench-100/) | Raw model responses, verifier decisions, and run configuration |

@@ -25,7 +25,7 @@
       ]
     },
     {
-      "file": "domain_action_generation.txt",
+      "file": "task_planning.txt",
       "format": "dollar",
       "fields": [
         "scene",
@@ -46,6 +46,16 @@
       "fields": [
         "feedback_record_json"
       ]
+    }
+  ],
+  "placeholders": [
+    {
+      "file": "dominant_action_identification.txt",
+      "source_record": "dominant_action_identification.md",
+      "paper_section": "5.3.1",
+      "print_page": 1062,
+      "pdf_page": 6,
+      "status": "unfilled"
     }
   ],
   "source_records": [

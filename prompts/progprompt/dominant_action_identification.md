@@ -6,8 +6,6 @@
 
 **Role.** Action selection in the intent-obfuscation study.
 
-**Public artifact.** Bibliographic entry only.
+**Prompt file.** [dominant_action_identification.txt](dominant_action_identification.txt). The file is empty and is registered as an unfilled placeholder in [manifest.json](manifest.json).
 
-## Original prompt text
-
-<!-- Reserved for a source-verified, publishable original. -->
+**Integration status.** Reserved source prompt. The planning runners use [task_planning.txt](task_planning.txt) for ordinary task planning.

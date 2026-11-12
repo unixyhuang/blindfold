@@ -9,7 +9,8 @@ The local planner combines an action interface, available objects, demonstration
 | [header.txt](header.txt) | Tabletop action signatures, state predicates, and program syntax | `progprompt render`, `generate` |
 | [demonstrations.txt](demonstrations.txt) | Three task functions with comments, actions, assertions, and recovery branches | `progprompt render`, `generate` |
 | [query.txt](query.txt) | Current tabletop objects, initial state, instruction, and function header | `progprompt render`, `generate` |
-| [domain_action_generation.txt](domain_action_generation.txt) | Ordinary SafeAgentBench program generation from a task and room inventory | `progprompt benchmark` |
+| [task_planning.txt](task_planning.txt) | Ordinary SafeAgentBench program generation from a task and room inventory | `progprompt benchmark` |
+| [dominant_action_identification.txt](dominant_action_identification.txt) | Empty prompt slot for the paper's §5.3.1 role | Unfilled placeholder |
 | [verifier_feedback.txt](verifier_feedback.txt) | Read-only reporting of an existing verifier result | `progprompt feedback` |
 | [chain_fusion.txt](chain_fusion.txt) | Reconciliation of two partial logs of the same tabletop transfer | `progprompt fuse` |
 
@@ -27,7 +28,7 @@ python main.py progprompt replay --task apple_to_counter --program runs/apple.pl
 
 The model generates a continuation of the task function. The runner preserves the raw completion and saves a common `def plan():` entry point for replay. `cup_to_tray` and `apple_to_counter` have complete symbolic initial states. [Model environment](../../README.md#requirements)
 
-The domain generation template uses a room's object-type list and the task instruction to produce a SafeAgentBench program. It retains the text used for the published batch so that its prompt fingerprints remain reproducible. The batch runner checks the generated steps against the reviewed goal. The [100-task guide](safeagentbench.md) documents the NF4 checkpoint, inventory provenance, run parameters, and output reports.
+The task planning template uses a room's object-type list and the task instruction to produce a SafeAgentBench program. It retains the text used for the published batch so that its prompt fingerprints remain reproducible. The batch runner checks the generated steps against the reviewed goal. The [100-task guide](safeagentbench.md) documents the NF4 checkpoint, inventory provenance, run parameters, and output reports.
 
 ## Verifier feedback
 
@@ -58,11 +59,12 @@ The runner checks complete event coverage and each fragment's order, then replay
 | Resource | Paper source | Artifact scope |
 | --- | --- | --- |
 | Shared planner | §4.1, §5.2.1, §6.1 | Local ProgPrompt-style planning for the released ordinary tasks |
-| Domain action generation | External planning context in §4.1 and §6.1 | SafeAgentBench task programs using the local action vocabulary |
+| Task planning | External planning context in §4.1 and §6.1 | SafeAgentBench task programs using the local action vocabulary |
+| Dominant action identification | §5.3.1, printed page 1062, PDF page 6 | Empty prompt file with a separate source record |
 | Verifier feedback | §5.4.1, printed page 1064 | Validated reporting of existing symbolic findings |
 | Chain fusion | §5.3.2, printed page 1063 | Two partial records of the same cup or apple transfer |
 
-The paper's dominant-action identification is a separate scoring role in §5.3.1. The ordinary domain generation template implements task planning. The following source records retain their paper locations and reserved original-text sections:
+The dominant-action identification slot is registered under `placeholders` in [manifest.json](manifest.json) and has an empty body. Runtime templates are listed under `templates`. The following source records retain their paper locations:
 
 - [Command sanitization](command_sanitization.md), §5.2.2, printed page 1061.
 - [Dominant action identification](dominant_action_identification.md), §5.3.1, printed page 1062.
