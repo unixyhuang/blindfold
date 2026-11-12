@@ -48,9 +48,15 @@ def add_arguments(parser):
     render = commands.add_parser("render", help="Print the exact prompt sent to the model.")
     generate = commands.add_parser("generate", help="Generate a program locally and check it.")
     replay = commands.add_parser("replay", help="Check a saved program on its symbolic scene.")
+    fuse = commands.add_parser("fuse", help="Reconcile two fragments of one tabletop transfer.")
+    fuse.add_argument("--fragments", type=Path, required=True, help="JSON array containing two event lists.")
+    mode = fuse.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--render", action="store_true", help="Print the populated reconciliation prompt.")
+    mode.add_argument("--model", type=Path, help="Propose an event order with a local Hugging Face checkpoint.")
+    fuse.add_argument("--device", choices=["auto", "cpu"], default="auto")
     from progprompt import benchmark
     benchmark.add_arguments(commands.add_parser("benchmark", help="Generate and verify SafeAgentBench plans."))
-    for command in (render, generate, replay):
+    for command in (render, generate, replay, fuse):
         command.add_argument("--task", choices=sorted(TASKS), default="cup_to_tray")
     generate.add_argument("--model", type=Path, required=True, help="Local Hugging Face checkpoint.")
     generate.add_argument("--device", choices=["auto", "cpu"], default="auto")
@@ -64,6 +70,25 @@ def run(args):
         from progprompt import benchmark
         return benchmark.run(args)
     bundle = json.loads((ROOT / "tasks" / TASKS[args.task]).read_text(encoding="utf-8"))
+    if args.operation == "fuse":
+        from progprompt.tabletop_merge import check_merge, render_merge_prompt
+        fragments = json.loads(args.fragments.read_text(encoding="utf-8-sig"))
+        prompt = render_merge_prompt(bundle, fragments)
+        if args.render:
+            print(prompt, end="")
+            return 0
+        from hf_client import generate_text
+        answer = generate_text(prompt, args.model, device=args.device, max_new_tokens=192).strip()
+        fence = re.fullmatch(r"```(?:json)?\s*\n(.*?)\n```", answer, re.DOTALL | re.IGNORECASE)
+        try:
+            proposal = json.loads(fence.group(1) if fence else answer)
+        except ValueError as error:
+            print(json.dumps({"status": "invalid_input", "error": str(error), "raw_reply": answer}, indent=2))
+            return 2
+        report = check_merge(bundle, fragments, proposal)
+        report["proposal"] = proposal
+        print(json.dumps(report, indent=2))
+        return {"passed": 0, "failed": 1, "conflict": 1, "invalid_input": 2}[report["status"]]
     if args.operation == "render":
         print(render_prompt(bundle), end="")
         return 0

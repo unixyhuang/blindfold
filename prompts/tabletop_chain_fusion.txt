@@ -1,0 +1,42 @@
+Solve the one record at the end of this message. Your reply is its JSON result.
+Reconcile two partial records of the same tabletop transfer. The transfer is
+either the empty cup from table_1 to tray_1 or the whole apple from table_1 to
+counter_1. Both records describe one task, one item and one destination.
+
+The input has a scene, a goal, an events table and two ordered lists of IDs.
+Each key of the events table is one action to perform exactly once. Its
+"after" list names events that must ALREADY be in the output before that event
+can be chosen. Begin with an event whose "after" list is empty. An ID in both
+fragments is one event. The order of keys in the events table is irrelevant.
+
+1. Preserve every distinct event ID exactly once. An ID present in both
+   fragments denotes one shared event. Identical action text with different
+   IDs denotes separate events.
+2. Preserve the relative order of events within each fragment. Across
+   fragments, choose an order consistent with the initial scene. Event IDs
+   are labels, not timestamps.
+3. These two transfers both require exactly one distinct pick and exactly
+   one distinct place in the events table. Extra inspection events are allowed.
+   Check the hand, item support, reachability and destination occupancy after
+   each action. An inspection leaves the scene unchanged. Picking the item
+   requires an empty hand and puts the item in the hand. Placement requires
+   the named item in the hand and a free, reachable destination. Placement
+   releases the item. The final hand must be empty and the item must be at
+   the destination stated in the goal.
+4. If no order meets these conditions using exactly the input events, report
+   the blocking condition. Do not add an action or drop an event to make the
+   task appear complete.
+
+Use {"status":"conflict","reason":"..."} only for a specific inconsistency in
+the input. Otherwise return {"status":"merged","order":[...]}.
+
+Worked apple transfer: P picks the apple (after nothing), S places it on
+the counter (after P), and I inspects it (after S). The lists are [P,S]
+and [S,I]. S is the same placement in both. The JSON answer is
+{"status":"merged","order":["P","S","I"]}.
+
+Input record
+{{merge_record_json}}
+
+Answer the input record now. Use the event IDs from that record. Output only
+the JSON object, without Python, Markdown or commentary.

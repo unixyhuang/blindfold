@@ -1,0 +1,10 @@
+[
+  [
+    {"id": "grasp", "action": "pick", "object": "cup_1"},
+    {"id": "release", "action": "place", "object": "cup_1", "target": "tray_1"}
+  ],
+  [
+    {"id": "look", "action": "inspect", "object": "cup_1"},
+    {"id": "grasp", "action": "pick", "object": "cup_1"}
+  ]
+]

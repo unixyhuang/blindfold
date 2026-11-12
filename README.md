@@ -59,6 +59,8 @@ python main.py progprompt generate --task apple_to_counter --model weights/Llama
 python main.py progprompt replay --task apple_to_counter --program runs/apple.plan
 ```
 
+For a tabletop transfer recorded in two overlapping fragments, the reconciliation prompt proposes one event order. The verifier checks that both fragments are preserved and that the combined actions reach the goal. [Tabletop chain fusion](prompts/README.md#tabletop-chain-fusion)
+
 For the 100-task run, prepare the pinned NF4 checkpoint using the benchmark guide, then run the batch from the repository root. Each prompt contains the instruction, action interface, demonstrations, and room object list. The verifier checks the generated actions against the reviewed goal. [NF4 setup and benchmark protocol](prompts/progprompt/safeagentbench.md)
 
 ```sh

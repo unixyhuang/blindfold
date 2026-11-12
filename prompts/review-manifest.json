@@ -1,8 +1,9 @@
 {
-  "version": 2,
-  "purpose": "Tabletop goal interpretation, outcome assessment and human review of fixed records",
+  "version": 3,
+  "purpose": "Tabletop goal interpretation, fragment reconciliation, outcome assessment and review of fixed records",
   "format": "UTF-8 text with named JSON-string substitutions",
   "templates": [
+    {"file": "tabletop_chain_fusion.txt", "fields": ["merge_record_json"]},
     {"file": "tabletop_goal.txt", "fields": ["task_record_json"]},
     {"file": "tabletop_goal_result.txt", "fields": ["observation_json"]},
     {"file": "reference_audit.txt", "fields": ["entity_catalog_json", "reference_cases_json"]},
