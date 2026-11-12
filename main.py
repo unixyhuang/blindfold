@@ -47,11 +47,19 @@ def main():
                           help="Benchmark annotations (default: reviewed).")
     verifier.add_argument("--metadata", type=Path,
                           help="Final AI2-THOR event metadata JSON for a single SafeAgentBench task.")
+    from progprompt.cli import add_arguments as add_planning_arguments, run as run_planning
+    add_planning_arguments(commands.add_parser("progprompt", help="Build and replay tabletop task programs."))
     from hf_client import add_arguments as add_inference_arguments, run_inference
     add_inference_arguments(commands.add_parser("infer", help="Query local Hugging Face model weights."))
     from finetuning.train import add_arguments, run_training
     add_arguments(commands.add_parser("finetune", help="Train on the bundled household instruction/step pairs."))
     args = parser.parse_args()
+    if args.command == "progprompt":
+        try:
+            return run_planning(args)
+        except (ValueError, OSError, RuntimeError) as error:
+            print(json.dumps({"status": "error", "error": str(error)}), file=sys.stderr)
+            return 2
     if args.command == "finetune":
         try:
             return run_training(args)

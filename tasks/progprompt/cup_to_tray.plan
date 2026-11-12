@@ -1,0 +1,12 @@
+def plan():
+    # Pick up the cup if the gripper does not already hold it.
+    if not holding("cup_1"):
+        assert hand_empty()
+        assert reachable("cup_1")
+        pick("cup_1")
+    assert holding("cup_1")
+    # Release the cup on the reachable tray.
+    assert reachable("tray_1")
+    place("cup_1", "tray_1")
+    assert on("cup_1", "tray_1")
+    assert hand_empty()

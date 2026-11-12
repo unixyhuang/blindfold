@@ -1,0 +1,12 @@
+# Complete the last tabletop task by continuing its function body. Write just
+# the task program. The following import describes the available interface.
+
+from tabletop import inspect, pick, place, reachable, holding, hand_empty, on
+
+# inspect(item) observes a reachable item. pick(item) needs an empty gripper
+# and a reachable item. place(item, destination) needs that item in the gripper,
+# a reachable destination and a free placement slot. It releases the item.
+# Predicates read the current scene: reachable(id), holding(item), hand_empty(),
+# and on(item, support). Use literal object IDs in calls.
+# Use comments for subgoals, assert for checks, and if not <predicate>: for
+# a recovery action. Each action changes the state seen by the next check.

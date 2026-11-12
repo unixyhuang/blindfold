@@ -1,0 +1,7 @@
+# Current task
+objects = $objects
+# Allowed item IDs for inspect/pick/place: $items
+# Allowed destination IDs for place: $destinations
+# Initial state: $scene
+# Instruction: $instruction
+def ${task_function}():

@@ -1,17 +1,18 @@
 # Blindfold · SenSys 2026
 
-Code accompanying **Jailbreaking Embodied LLMs via Action-Level Manipulation**. The repository provides symbolic action verification, structured task inputs, prompt resources, Hugging Face inference and standard local SLM fine-tuning. [Paper](https://doi.org/10.1145/3774906.3802758)
+Code accompanying **Jailbreaking Embodied LLMs via Action-Level Manipulation**. The repository provides symbolic action verification, structured task inputs, local ProgPrompt-style tabletop planning, Hugging Face inference and standard local SLM fine-tuning. [Paper](https://doi.org/10.1145/3774906.3802758)
 
 ## Repository layout
 
 ```text
 main.py                  Command-line entrypoint
 hf_client.py             Local Hugging Face inference for Llama-3.1
+progprompt/              Local program generation and symbolic tabletop execution
 verifier/                Symbolic state and action checks
 finetuning/              Standard SFT data processing and training
 requirements/model.txt   Shared inference and training dependencies
 tasks/                   Complete task inputs and 100 SafeAgentBench records
-prompts/                 Goal and record-review templates
+prompts/                 ProgPrompt templates, goal and record-review prompts
 docs/                    Model training and repository maintenance guides
 scripts/                 Git synchronization and ZIP packaging
 .github/workflows/       Automated verification, model checks and releases
@@ -49,7 +50,7 @@ hf auth login
 hf download meta-llama/Llama-3.1-8B-Instruct --local-dir weights/Llama-3.1-8B-Instruct
 ```
 
-Keep `config.json`, all Safetensors shards and their index, the tokenizer files and the supplied generation configuration together. Record the downloaded model revision when reporting results. Both model commands load the local directory with `local_files_only=True` and `trust_remote_code=False`.
+Keep `config.json`, all Safetensors shards and their index, the tokenizer files and the supplied generation configuration together. Record the downloaded model revision when reporting results. The model commands load the local directory with `local_files_only=True` and `trust_remote_code=False`.
 
 Automatic inference placement uses available GPU/CPU memory and the checkpoint's dtype. An 8B checkpoint in bfloat16 needs roughly 16 GB for weights plus runtime memory; prepare additional host/device memory for generation and offloading. `--device cpu` uses float32, which needs roughly 32 GB for weights plus runtime memory. [Hugging Face model loading](https://huggingface.co/docs/transformers/v4.57.1/en/main_classes/model#large-model-loading)
 
@@ -64,6 +65,18 @@ python main.py infer --model weights/Llama-3.1-8B-Instruct
 `python main.py` checks `tasks/cup_to_tray.json`. For the two tabletop tasks, `verify` prints the initial state, final state and any failed rule as JSON. Exit codes are 0 for a satisfied tabletop goal, 1 for a rule failure and 2 for invalid input. Failure reports restore the initial symbolic state.
 
 `infer` loads `AutoTokenizer` and `AutoModelForCausalLM`, applies the tokenizer's chat template and answers a fixed cup-location question using greedy decoding. It prints only the generated answer, without the input prompt. `--max-new-tokens` defaults to 32; `--device cpu` selects CPU execution. Tokenizers without a chat template use the same user/assistant text boundary as the SFT loader. The query checks local model loading and generation. The verification command reads the action records in the task file.
+
+## ProgPrompt for local tabletop planning
+
+The local planner builds a Python-style prompt from an action interface, three demonstration functions, the current scene and a task function to complete. A local Hugging Face model generates the body. The symbolic interpreter checks assertions and runs the selected recovery branches before checking the task goal. Supported tasks are `cup_to_tray` and `apple_to_counter`.
+
+```sh
+python main.py progprompt render --task cup_to_tray
+python main.py progprompt replay --task cup_to_tray --program tasks/progprompt/cup_to_tray.plan
+python main.py progprompt generate --task apple_to_counter --model weights/Llama-3.1-8B-Instruct --save-program runs/apple.plan
+```
+
+Rendering and replay need only Python 3.11. For generation, install the shared model environment and supply local weights. The [prompt guide](prompts/progprompt/README.md) describes the three editable templates, the program reports and how this adaptation relates to the original VirtualHome setup.
 
 ## Local SLM fine-tuning
 
@@ -109,12 +122,12 @@ The default verifier uses reviewed goals for all 100 records. It supports 64 int
 | Access the local model | Llama-3.1 Hugging Face weights and tokenizer, model access approval, `requirements/model.txt` and sufficient GPU/host memory. Record the model revision. |
 | Fine-tune a local SLM | The same model environment and enough memory for parameters, gradients, optimizer state and activations during full-parameter training. |
 | Check additional records | Supply a single SafeAgentBench JSON record using the documented vocabulary, or a supported tabletop task, to `verify --task PATH`. |
-| Use the prompt resources | Populate the declared JSON fields and submit the rendered text through the selected model interface. The manifest lists the required fields. |
+| Use the prompt resources | Use `progprompt render` for situated tabletop prompts. For the separate record-review templates, populate the JSON fields in their manifest. |
 | Reproduce the paper's full workflow | Obtain the authors' command-transformation and obfuscation implementation, paper-specific prompt resources, proxy preparation settings and environment integration. These components require a separate release. |
 | Run simulator-based tasks | Prepare the selected simulator version, scene assets and an adapter from its state/action API to the released rule set. |
 | Check the 100 SafeAgentBench records offline | Use the bundled collection with Python 3.11. For an observed goal check, supply final event metadata from the selected task's simulator run. |
 
-The current release checks fixed symbolic action records and provides ordinary model inference and SFT. The planning and obfuscation pipeline and simulator adapters require the resources listed above.
+The two tabletop scenes support local program generation and symbolic execution. Reproduction of the full Blindfold workflow requires the additional resources listed above.
 
 ## Citation
 

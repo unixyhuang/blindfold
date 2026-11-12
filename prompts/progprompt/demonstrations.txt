@@ -1,0 +1,32 @@
+# Demonstration: check a book that is already on the shelf.
+objects = ["book_1", "shelf_1"]
+def check_shelved_book():
+    # Inspect the book without moving it.
+    assert reachable("book_1")
+    inspect("book_1")
+    assert on("book_1", "shelf_1")
+
+# Demonstration: leave a held coaster on its stand.
+objects = ["coaster_1", "stand_1"]
+def return_held_coaster():
+    # Confirm the initial grasp before releasing the coaster.
+    assert holding("coaster_1")
+    assert reachable("stand_1")
+    place("coaster_1", "stand_1")
+    assert on("coaster_1", "stand_1")
+    assert hand_empty()
+
+# Demonstration: move a wooden block from a work surface onto a free mat.
+objects = ["block_1", "bench_1", "mat_1"]
+def put_block_on_mat():
+    # Acquire the block if it is not already held.
+    if not holding("block_1"):
+        assert hand_empty()
+        assert reachable("block_1")
+        pick("block_1")
+    # Release the block on the mat and check the result.
+    assert holding("block_1")
+    assert reachable("mat_1")
+    place("block_1", "mat_1")
+    assert on("block_1", "mat_1")
+    assert hand_empty()

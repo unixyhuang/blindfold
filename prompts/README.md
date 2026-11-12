@@ -1,5 +1,7 @@
 # Prompt resources
 
+For local task planning, use the [ProgPrompt templates and runner](progprompt/README.md). The resources below take structured records for review.
+
 The manifest defines UTF-8 templates with named JSON fields. Each template contains its input and output contracts.
 
 | Template | Required fields | Purpose |
