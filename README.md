@@ -16,6 +16,7 @@ Version 1.0 is a rolling release. For an exact citation of the code, use the Git
 | [progprompt/](progprompt/) | Python code that renders prompts, invokes models, and checks programs |
 | [verifier/](verifier/) | Action preconditions, state transitions, and goal checks |
 | [simulators/](simulators/) | VirtualHome HTTP client, graph bindings, transfer execution, and observed-goal checks |
+| [third_party/](third_party/) | Pinned VirtualHome Evolving Graph modules and their MIT license |
 | [finetuning/](finetuning/) · [requirements/](requirements/) | Supervised fine-tuning and model dependencies |
 
 ## Quick start
@@ -80,22 +81,30 @@ python main.py progprompt benchmark --model weights/llama31-8b-instruct-nf4 --ba
 
 ## Execution scope
 
-The available flows are ordinary task planning followed by symbolic verification, read-only feedback on an existing report, and reconciliation of overlapping logs for one supported tabletop transfer. These entry points are independently runnable. Supplied paper-role text without a runtime handler is reported by `check-prompts`.
+The ordinary-task workflow connects planning, equivalent action optimization, bounded verifier-feedback repair and VirtualHome verification for the three released tabletop transfers. The separate feedback-reporting and fragment-reconciliation commands remain available. Supplied paper-role text without a runtime handler is reported by `check-prompts`.
 
-Model generation can produce unsupported syntax or a plan that fails its goal. The verifier reports that outcome; the commands do not automatically repair the plan or run a complete planner-verifier loop. Template readiness does not guarantee that a model-generated plan will pass.
+Model generation can produce unsupported syntax or a plan that fails its goal. With `--optimize`, eligible ordinary action traces can be repaired within a fixed attempt limit. Invalid programs and failed assertions are not silently discarded. Template readiness does not guarantee that a model-generated plan will pass. [Optimization and feedback-repair contracts](docs/ordinary-workflow.md)
 
 The verifier checks goal support under its symbolic action rules. For example, a `pour` step records a tilt but does not establish that liquid reached the intended object. Room inventories come from ALFRED's AI2-THOR 2.1.0 export, while SafeAgentBench uses 5.0.0. The benchmark command writes the model responses and per-task findings to the selected `--output-dir`. [Annotation review](tasks/safeagentbench/annotation-review.md)
 
 ## VirtualHome
 
-The VirtualHome adapter connects bundled cup/apple transfer tasks to a separately running Unity simulator. The `cup_to_counter` task provides an ordinary transfer for native-scene validation. The adapter resolves actual graph object IDs, checks the plan before execution, sends one script line at a time, and checks placement and empty hands in the returned graph. The client requires only the Python standard library; model generation uses the shared Hugging Face environment. [Simulator setup, bindings, and execution guide](docs/virtualhome.md)
+The bundled VirtualHome Evolving Graph backend executes all three task contracts with the official graph engine and requires only Python 3.11. The ordinary optimizer preserves successful trace outcomes and uses exact verifier feedback for bounded action repair. Run without model weights using recorded actions:
+
+```sh
+python main.py virtualhome run --backend evolving-graph --task cup_to_tray --recorded --optimize --max-repairs 2 --output-dir runs/ordinary-cup-tray
+```
+
+Replace `--recorded` with `--model weights/llama31-8b-instruct-nf4` for local model planning. The [workflow guide](docs/ordinary-workflow.md) covers all three tasks, action inputs, repair boundaries and audit outputs.
+
+The Unity backend connects the same ordinary workflow to a separately running native simulator. It resolves actual graph object IDs, sends one script line at a time, and checks placement and empty hands in the returned graph. Unity execution requires an appropriate executable and scene assets. [Unity setup, bindings, and execution guide](docs/virtualhome.md)
 
 ```sh
 python main.py virtualhome inspect --environment 0 --output runs/virtualhome-scene.json
-python main.py virtualhome run --task cup_to_counter --model weights/llama31-8b-instruct-nf4 --environment 0 --bindings runs/cup-bindings.json --output-dir runs/virtualhome-model
+python main.py virtualhome run --backend unity --task cup_to_counter --model weights/llama31-8b-instruct-nf4 --optimize --max-repairs 2 --environment 0 --bindings runs/cup-bindings.json --output-dir runs/virtualhome-model
 ```
 
-Prepare a compatible Unity executable and a binding file with observed instance IDs. The SafeAgentBench collection uses AI2-THOR scenes and is not a VirtualHome task collection. This ordinary-task interface does not implement the missing paper workflow components.
+Graph-backend results establish symbolic transitions; Unity assets, geometry and navigation need native validation. The SafeAgentBench collection uses AI2-THOR scenes and is not a VirtualHome task collection. This ordinary-task workflow does not implement the missing paper attack components.
 
 ## Local SLM fine-tuning
 

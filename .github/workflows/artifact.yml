@@ -31,6 +31,7 @@ jobs:
           tasks = [
               ([], "cup", "tray_1"),
               (["verify", "--task", "tasks/apple_to_counter.json"], "apple", "counter_1"),
+              (["verify", "--task", "tasks/cup_to_counter.json"], "cup", "counter_1"),
           ]
           for arguments, item, destination in tasks:
               result = subprocess.run(
@@ -44,7 +45,7 @@ jobs:
               assert report["final_state"]["arm"]["held"] is None, report
               print(f"Passed {report['task_id']}")
           PY
-      - name: Check benchmark traces and observation rules
+      - name: Check verifier, optimization and simulator interfaces
         run: python -B -S -m unittest discover -s tests
       - name: Check the 100-task collection
         shell: bash

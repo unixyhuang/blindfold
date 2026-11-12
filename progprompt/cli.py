@@ -72,6 +72,8 @@ def generate_plan(bundle, model, *, device="auto", max_new_tokens=256, input_for
 def add_arguments(parser):
     commands = parser.add_subparsers(dest="operation", required=True)
     commands.add_parser("check-prompts", help="Inspect prompt resources and paper workflow readiness without loading a model.")
+    from progprompt import workflow
+    workflow.add_arguments(commands.add_parser("optimize", help="Optimize or repair one of the three ordinary transfers."))
     render = commands.add_parser("render", help="Print the exact prompt sent to the model.")
     generate = commands.add_parser("generate", help="Generate a program locally and check it.")
     replay = commands.add_parser("replay", help="Check a saved program on its symbolic scene.")
@@ -103,6 +105,9 @@ def add_arguments(parser):
 
 
 def run(args):
+    if args.operation == "optimize":
+        from progprompt import workflow
+        return workflow.run(args)
     if args.operation == "check-prompts":
         from progprompt import resources
         return resources.run(args)

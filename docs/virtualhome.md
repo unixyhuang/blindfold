@@ -1,5 +1,7 @@
 # VirtualHome interface
 
+For a self-contained three-task optimization and verifier-feedback workflow, use the bundled Evolving Graph backend described in the [ordinary workflow guide](ordinary-workflow.md). This page covers the separate native Unity backend. `virtualhome run --optimize --max-repairs 2` applies the ordinary workflow before Unity execution; `virtualhome inspect` reads the Unity service.
+
 The `virtualhome` command connects ordinary tabletop transfer plans to VirtualHome's Unity simulator. It supports the bundled `cup_to_counter`, `apple_to_counter`, and `cup_to_tray` tasks, using actual scene object IDs. The Python client uses the standard library and follows the [official Unity HTTP protocol](https://github.com/xavierpuigf/virtualhome/blob/58970fd80951c2eaa1af713e0917d1a105353ad8/virtualhome/simulation/unity_simulator/comm_unity.py). It does not require installing the upstream `virtualhome` Python package into the model environment.
 
 ## Prepare the simulator
@@ -84,5 +86,7 @@ The supplied paper-role prompts are not invoked by this interface. The full pape
 ## Engine validation
 
 The official v2.0 Windows archive has SHA-256 `2f0e432fb7081575c95fa46254d085fcd9170f5abff55047f33aebc649e86f52`. In scene 0, both the recorded `cup_to_counter` run and the combined Llama-3.1-8B-Instruct NF4 model run completed through `main.py`. All four native script lines were acknowledged, and the returned graph established `mug(197) ON kitchencounter(239)` with empty character hands.
+
+The optimized workflow was also checked on the same native scene with an action-only program that attempted placement before acquisition. Verifier feedback triggered one repair; the four native script lines then completed, with the same independently observed placement and empty-hand outcome.
 
 The same build rejected tested apple interactions with `Script is impossible to execute` or `No interaction positions`; these are retained as execution failures. The inspected scenes did not contain a `tray`, so the cup-to-tray task could not be bound there. The v2.3 protocol is covered by local protocol fixtures, without a real v2.3 binary validation. The checked v2.3 download links from the upstream README were unavailable during validation.

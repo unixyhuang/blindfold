@@ -4,8 +4,7 @@ import json
 import re
 from pathlib import Path
 
-from progprompt.cli import ROOT, TASKS, generate_plan
-from progprompt.runtime import check_program
+from progprompt.cli import ROOT, TASKS
 from simulators.virtualhome_client import UnityClient, VirtualHomeError
 from verifier.tabletop import _validate_scene, verify_task
 
@@ -199,6 +198,10 @@ def add_arguments(parser):
     mode.add_argument("--program", type=Path, help="Check a saved def plan() program before executing.")
     mode.add_argument("--model", type=Path, help="Generate a plan with local Hugging Face weights.")
     mode.add_argument("--recorded", action="store_true", help="Use the task's recorded reference actions.")
+    mode.add_argument("--actions", type=Path, help="JSON action array; requires --optimize for failed input repair.")
+    execute.add_argument("--optimize", action="store_true", help="Optimize and finitely repair the ordinary plan before simulation.")
+    execute.add_argument("--max-repairs", type=int, default=2, help="Action repair attempts with --optimize, from 0 to 3.")
+    execute.add_argument("--backend", choices=["unity", "evolving-graph"], default="unity")
     execute.add_argument("--device", choices=["auto", "cpu"], default="auto")
     execute.add_argument("--max-new-tokens", type=int, default=256)
     execute.add_argument("--input-format", choices=["chat", "completion"], default="chat")
@@ -219,10 +222,10 @@ def _write(path, data):
 
 
 def run(args):
-    client = UnityClient(args.host, args.port, args.timeout)
     if args.environment is not None and args.environment < 0:
         raise ValueError("--environment must be nonnegative.")
     if args.operation == "inspect":
+        client = UnityClient(args.host, args.port, args.timeout)
         try:
             if not client.check_connection():
                 raise VirtualHomeError("VirtualHome did not confirm the idle request.")
@@ -242,24 +245,38 @@ def run(args):
         raise ValueError("Choose an empty --output-dir for each VirtualHome run.")
     supplied = json.loads(args.bindings.read_text(encoding="utf-8-sig")) if args.bindings else None
     bundle = json.loads((ROOT / "tasks" / TASKS[args.task]).read_text(encoding="utf-8"))
-    if args.recorded:
-        plan = {**verify_task(bundle), "actions": bundle["actions"], "source": "recorded_reference"}
-    elif args.model:
-        plan = generate_plan(bundle, args.model, device=args.device,
-                             max_new_tokens=args.max_new_tokens, input_format=args.input_format)
+    from progprompt.workflow import load_plan, optimize_plan
+    initial = load_plan(args, bundle)
+    workflow = optimize_plan(bundle, initial, max_repairs=args.max_repairs) if args.optimize else None
+    if workflow is not None and workflow["status"] != "ready":
+        plan = initial
+        report = {"task_id": bundle["task_id"], "status": "workflow_failed", "stage": "optimization",
+                  "planner": initial, "execution": [], "goal_met": None}
     else:
-        program = args.program.read_text(encoding="utf-8-sig")
-        plan = check_program(program, bundle)
-        plan.update(program=program, source="saved_program")
-    report = execute_transfer(bundle, plan, client, environment=args.environment, supplied_bindings=supplied,
-                              character=args.character, initial_room=args.initial_room)
+        plan = workflow["final_plan"] if workflow is not None else initial
+        if args.backend == "evolving-graph":
+            from simulators.evolving_graph import EvolvingGraphClient
+            client = EvolvingGraphClient(bundle)
+        else:
+            client = UnityClient(args.host, args.port, args.timeout)
+        report = execute_transfer(bundle, plan, client, environment=args.environment, supplied_bindings=supplied,
+                                  character=args.character, initial_room=args.initial_room)
+        if isinstance(getattr(client, "upstream_commit", None), str):
+            report["upstream_commit"] = client.upstream_commit
+    report["backend"] = "virtualhome_evolving_graph" if args.backend == "evolving-graph" else "virtualhome_unity"
+    if workflow is not None:
+        report["workflow"] = workflow
+        _write(folder / "workflow.json", workflow)
+        if "program" in initial:
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / "original-plan.py").write_text(initial["program"], encoding="utf-8")
     _write(folder / "report.json", report)
     for key in ("before_graph", "after_graph", "bindings"):
         if key in report:
             _write(folder / (key + ".json"), report[key])
     if "script" in report:
         (folder / "script.txt").write_text("\n".join(step["line"] for step in report["script"]) + "\n", encoding="utf-8")
-    if "program" in plan:
+    if "program" in plan and (workflow is None or workflow["status"] == "ready"):
         (folder / "plan.py").write_text(plan["program"], encoding="utf-8")
     print(json.dumps(report, indent=2, ensure_ascii=False))
     if report["status"] == "passed":

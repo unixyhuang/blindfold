@@ -204,7 +204,7 @@ def check_prompts(directory=None):
             issue(name, str(exc))
     for name in set(SOURCE_RECORDS) - source_names:
         issue(name, "Expected paper source record is missing from the manifest.")
-    issue("full_paper_pipeline", "Released planning, feedback and merge commands are separate; the full paper workflow is not implemented.")
+    issue("full_paper_pipeline", "The ordinary-task workflow is executable; the paper-specific transformation and obfuscation pipeline is not implemented.")
     return report
 
 
