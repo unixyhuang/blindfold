@@ -1,0 +1,56 @@
+{
+  "artifact_version": "1.0",
+  "framework": "ProgPrompt",
+  "templates": [
+    {
+      "file": "header.txt",
+      "format": "literal",
+      "fields": []
+    },
+    {
+      "file": "demonstrations.txt",
+      "format": "literal",
+      "fields": []
+    },
+    {
+      "file": "query.txt",
+      "format": "dollar",
+      "fields": [
+        "objects",
+        "items",
+        "destinations",
+        "scene",
+        "instruction",
+        "task_function"
+      ]
+    },
+    {
+      "file": "domain_action_generation.txt",
+      "format": "dollar",
+      "fields": [
+        "scene",
+        "objects",
+        "instruction"
+      ]
+    },
+    {
+      "file": "chain_fusion.txt",
+      "format": "double_braces",
+      "fields": [
+        "merge_record_json"
+      ]
+    },
+    {
+      "file": "verifier_feedback.txt",
+      "format": "double_braces",
+      "fields": [
+        "feedback_record_json"
+      ]
+    }
+  ],
+  "source_records": [
+    "command_sanitization.md",
+    "dominant_action_identification.md",
+    "cover_branch_generation.md"
+  ]
+}

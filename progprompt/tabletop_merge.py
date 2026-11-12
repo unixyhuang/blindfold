@@ -78,7 +78,7 @@ def render_merge_prompt(bundle, fragments):
             if earlier not in events[later]["after"]:
                 events[later]["after"].append(earlier)
     model_input = {**record, "fragments": fragments_by_id, "events": events}
-    template = (TASK_DIR.parent / "prompts/tabletop_chain_fusion.txt").read_text(encoding="utf-8")
+    template = (TASK_DIR.parent / "prompts/progprompt/chain_fusion.txt").read_text(encoding="utf-8")
     return template.replace("{{merge_record_json}}", json.dumps(model_input, indent=2), 1)
 
 

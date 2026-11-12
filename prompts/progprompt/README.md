@@ -1,28 +1,71 @@
-# Local ProgPrompt
+# ProgPrompt resources
 
-This implementation reproduces the prompt structure described by Singh et al. for two symbolic tabletop transfers. The upstream evaluation uses GPT completions and a VirtualHome Unity scene. Here the repository supplies a complete tabletop state and a local Hugging Face checkpoint supplies the completion. For SafeAgentBench, a separate batch command uses independently exported object-type inventories for 75 named rooms. [100-task batch guide](safeagentbench.md) · [Authors' project](https://progprompt.github.io/) · [Official VirtualHome implementation and setup](https://github.com/NVlabs/progprompt-vh)
+The local planner combines an action interface, available objects, demonstration programs, and a task description. Target and proxy planning use this shared planner for the ordinary task domains provided by the artifact. Prompt resources and source records are collected in this directory. [ProgPrompt project](https://progprompt.github.io/) · [Blindfold paper](https://doi.org/10.1145/3774906.3802758)
 
-| Prompt file | Contribution |
-| --- | --- |
-| [header.txt](header.txt) | Declares action signatures, state predicates and the permitted program syntax. |
-| [demonstrations.txt](demonstrations.txt) | Three independently written task functions illustrate subgoal comments, direct actions, assertions and conditional recovery. |
-| [query.txt](query.txt) | Inserts the current scene's object IDs, initial state, instruction and a function header derived from the task description. |
+## Templates
 
-The renderer reads the task's instruction and initial scene. The scene's action schema supplies the valid item and destination IDs. Reference actions and the formal goal stay outside the model input. Generation uses the literal program prefix, greedy decoding and a default limit of 256 new tokens. The next top-level prompt section (another function, object list or task header) ends the target function. Saved programs use a common `def plan():` entry point. The JSON report retains the raw model completion for inspection.
+| File | Role | Entry point |
+| --- | --- | --- |
+| [header.txt](header.txt) | Tabletop action signatures, state predicates, and program syntax | `progprompt render`, `generate` |
+| [demonstrations.txt](demonstrations.txt) | Three task functions with comments, actions, assertions, and recovery branches | `progprompt render`, `generate` |
+| [query.txt](query.txt) | Current tabletop objects, initial state, instruction, and function header | `progprompt render`, `generate` |
+| [domain_action_generation.txt](domain_action_generation.txt) | Ordinary SafeAgentBench program generation from a task and room inventory | `progprompt benchmark` |
+| [verifier_feedback.txt](verifier_feedback.txt) | Read-only reporting of an existing verifier result | `progprompt feedback` |
+| [chain_fusion.txt](chain_fusion.txt) | Reconciliation of two partial logs of the same tabletop transfer | `progprompt fuse` |
 
-## Run from the repository root
+For tabletop generation, the renderer takes the instruction and initial scene. The scene schema supplies the valid action arguments. The verifier receives the terminal goal and checks the generated actions independently. Generated programs are interpreted using the declared action language.
+
+## Planning
+
+Run from the repository root:
 
 ```sh
 python main.py progprompt render --task apple_to_counter
-python main.py progprompt replay --task cup_to_tray --program tasks/progprompt/cup_to_tray.plan
 python main.py progprompt generate --task apple_to_counter --model weights/Llama-3.1-8B-Instruct --save-program runs/apple.plan
 python main.py progprompt replay --task apple_to_counter --program runs/apple.plan
 ```
 
-The included cup program is a human-authored reference for checking symbolic execution. Generation needs the [model environment](../../README.md#requirements) and a local checkpoint. Choose `--device cpu` for CPU execution.
+The model generates a continuation of the task function. The runner preserves the raw completion and saves a common `def plan():` entry point for replay. `cup_to_tray` and `apple_to_counter` have complete symbolic initial states. [Model environment](../../README.md#requirements)
 
-## Interpret a report
+The domain generation template uses a room's object-type list and the task instruction to produce a SafeAgentBench program. It retains the text used for the published batch so that its prompt fingerprints remain reproducible. The batch runner checks the generated steps against the reviewed goal. The [100-task guide](safeagentbench.md) documents the NF4 checkpoint, inventory provenance, run parameters, and output reports.
 
-The interpreter validates the syntax of the whole program, including conditional branches. It then reads predicates against the current symbolic scene and applies actions through the tabletop verifier. An `if not holding(...)` guard can acquire an item when the hand is empty. A subsequent `assert holding(...)` checks the updated state. Program text is parsed as a small action language.
+## Verifier feedback
 
-The JSON report contains the generated or saved program, the actions attempted, the assertions evaluated, the final state and the goal result. Exit code 0 denotes a satisfied goal, 1 a failed rule, assertion or goal, and 2 an invalid program or input. Failed checks report the restored initial state. Model output that fails to parse is available in the report and in the file requested with `--save-program`.
+The feedback command accepts a single tabletop verification, benchmark task result, generated-program result, or merge report. Save a verifier record as JSON and supply it to the command:
+
+```sh
+python main.py verify --task tasks/cup_to_tray.json > cup-verifier.json
+python main.py progprompt feedback --record cup-verifier.json
+python main.py progprompt feedback --record cup-verifier.json --render
+python main.py progprompt feedback --record cup-verifier.json --model weights/Llama-3.1-8B-Instruct
+```
+
+The adapter collects the status and diagnostic fields present in the record, preserving their order, indices, null values, and messages. The default command produces that envelope deterministically. An unknown result retains its unknown status. With `--model`, the model reports the envelope for inspection, and the command compares its reply with the deterministic expected envelope before accepting it. A modified field or invalid JSON produces `feedback_mismatch`. Changing the action plan or verifier verdict is outside this reporting interface.
+
+## Chain fusion
+
+Each input fragment is an ordered list of events from one supported tabletop transfer. A shared ID identifies one shared event; distinct IDs retain distinct events even when their action text matches. The prompt receives one event table plus precedence constraints derived from both fragments.
+
+```sh
+python main.py progprompt fuse --task cup_to_tray --fragments tasks/progprompt/cup_fragments.json --render
+python main.py progprompt fuse --task cup_to_tray --fragments tasks/progprompt/cup_fragments.json --model weights/Llama-3.1-8B-Instruct
+```
+
+The runner checks complete event coverage and each fragment's order, then replays the original event actions through the tabletop verifier. The bundled cup fragments require `look → grasp → release`. A conflict reply records model abstention. A rejected candidate retains the rule that failed.
+
+## Relationship to the paper
+
+| Resource | Paper source | Artifact scope |
+| --- | --- | --- |
+| Shared planner | §4.1, §5.2.1, §6.1 | Local ProgPrompt-style planning for the released ordinary tasks |
+| Domain action generation | External planning context in §4.1 and §6.1 | SafeAgentBench task programs using the local action vocabulary |
+| Verifier feedback | §5.4.1, printed page 1064 | Validated reporting of existing symbolic findings |
+| Chain fusion | §5.3.2, printed page 1063 | Two partial records of the same cup or apple transfer |
+
+The paper's dominant-action identification is a separate scoring role in §5.3.1. The ordinary domain generation template implements task planning. The following source records retain their paper locations and reserved original-text sections:
+
+- [Command sanitization](command_sanitization.md), §5.2.2, printed page 1061.
+- [Dominant action identification](dominant_action_identification.md), §5.3.1, printed page 1062.
+- [Cover branch creation and completion](cover_branch_generation.md), §5.3.2, printed page 1063.
+
+The paper prints simplified material for several roles. The public executable templates in this directory are independently authored adaptations, with behavior defined by their input contracts and the associated symbolic checks.

@@ -1,0 +1,19 @@
+Return the supplied feedback envelope as one JSON object. Preserve its complete
+structure and values. This is a read-only rendering of findings already recorded
+by the verifier. The envelope has task_id, status and diagnostics.
+
+Keep every diagnostic field and its order within arrays. Preserve nulls,
+booleans, numbers, exact messages, source indices, line numbers and nested
+verifier records. Status unknown means the available evidence is insufficient.
+A conflict status records the model's abstention when no verifier result is
+present. These statuses must retain their supplied names.
+
+Do not add a diagnosis, infer missing observations or produce actions. Reply
+with only the supplied JSON envelope. Do not include a heading or explanation.
+
+Feedback envelope
+{{feedback_record_json}}
+
+Copy that entire envelope now. Start with { and end with }.
+Use valid JSON escaping. An apostrophe inside a double-quoted JSON string is
+ordinary text. Leave it unchanged; a backslash before an apostrophe is invalid.

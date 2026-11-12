@@ -14,7 +14,7 @@ from verifier.collection import COLLECTION, load_collection
 from verifier.safeagentbench import OBJECT_TYPES
 
 
-TEMPLATE = Path(__file__).resolve().parents[1] / "prompts/progprompt/safeagentbench.txt"
+TEMPLATE = Path(__file__).resolve().parents[1] / "prompts/progprompt/domain_action_generation.txt"
 PUBLISHED_RUN = Path(__file__).resolve().parents[1] / "results/llama31-safeagentbench-100"
 
 

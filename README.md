@@ -12,7 +12,7 @@ Version 1.0 is a rolling release. For an exact citation of the code, use the Git
 | --- | --- |
 | [main.py](main.py) | Command-line entry point for verification, planning, inference, and fine-tuning |
 | [tasks/](tasks/) | Tabletop scenes, SafeAgentBench records, reviewed goals, and room inventories |
-| [prompts/](prompts/) · [progprompt/](progprompt/) | [Paper prompt inventory](prompts/paper/README.md), public templates, program generation, and symbolic replay |
+| [prompts/progprompt/](prompts/progprompt/) · [progprompt/](progprompt/) | Unified prompt resources, domain action generation, verifier feedback, and chain fusion |
 | [verifier/](verifier/) | Action preconditions, state transitions, and goal checks |
 | [finetuning/](finetuning/) · [requirements/](requirements/) | Supervised fine-tuning and model dependencies |
 | [results/](results/llama31-safeagentbench-100/) | Raw model responses, verifier decisions, and run configuration |
@@ -67,7 +67,7 @@ python main.py progprompt generate --task apple_to_counter --model weights/Llama
 python main.py progprompt replay --task apple_to_counter --program runs/apple.plan
 ```
 
-For a tabletop transfer recorded in two overlapping fragments, the reconciliation prompt proposes one event order. The verifier checks that both fragments are preserved and that the combined actions reach the goal. [Tabletop chain fusion](prompts/README.md#tabletop-chain-fusion)
+For a tabletop transfer recorded in two overlapping fragments, the reconciliation prompt proposes one event order. The verifier checks that both fragments are preserved and that the combined actions reach the goal. The same ProgPrompt module provides a read-only feedback command for an existing verifier report. [Prompt interfaces](prompts/progprompt/README.md)
 
 For the 100-task run, prepare the pinned NF4 checkpoint using the benchmark guide, then run the batch from the repository root. Each prompt contains the instruction, action interface, demonstrations, and room object list. The verifier checks the generated actions against the reviewed goal. [NF4 setup and benchmark protocol](prompts/progprompt/safeagentbench.md)
 

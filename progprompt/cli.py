@@ -48,6 +48,12 @@ def add_arguments(parser):
     render = commands.add_parser("render", help="Print the exact prompt sent to the model.")
     generate = commands.add_parser("generate", help="Generate a program locally and check it.")
     replay = commands.add_parser("replay", help="Check a saved program on its symbolic scene.")
+    feedback = commands.add_parser("feedback", help="Report the verifier's diagnostics for an existing run.")
+    feedback.add_argument("--record", type=Path, required=True, help="Single verifier or planner report JSON.")
+    feedback_mode = feedback.add_mutually_exclusive_group()
+    feedback_mode.add_argument("--render", action="store_true", help="Print the populated feedback prompt.")
+    feedback_mode.add_argument("--model", type=Path, help="Render and validate a local model's diagnostic report.")
+    feedback.add_argument("--device", choices=["auto", "cpu"], default="auto")
     fuse = commands.add_parser("fuse", help="Reconcile two fragments of one tabletop transfer.")
     fuse.add_argument("--fragments", type=Path, required=True, help="JSON array containing two event lists.")
     mode = fuse.add_mutually_exclusive_group(required=True)
@@ -68,6 +74,9 @@ def add_arguments(parser):
 
 
 def run(args):
+    if args.operation == "feedback":
+        from progprompt import feedback
+        return feedback.run(args)
     if args.operation in {"benchmark", "replay-benchmark"}:
         from progprompt import benchmark
         if args.operation == "replay-benchmark":
