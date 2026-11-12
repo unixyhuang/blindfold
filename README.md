@@ -99,7 +99,7 @@ python main.py verify --benchmark safeagentbench --scene FloorPlan203
 python main.py verify --benchmark safeagentbench
 ```
 
-The batch reports 29 goals supported by the recorded actions, one contradiction and 70 unknown goals. Of the unknowns, 65 have no goal annotation. A full batch returns exit code 1 because `sab-safe-0122` closes a cabinet whose annotation requires it to be open. To check a task's goal against observations from a simulator run, pass `--metadata final-event.json` with its task ID. The [dataset and verification guide](tasks/safeagentbench/README.md#verify-the-records) explains the assumptions, output fields and snapshot format.
+The default verifier uses reviewed goals for all 100 records. It supports 64 intended outcomes from the recorded actions, finds 36 with insufficient evidence and reports zero contradictions. The review adds 65 goals derived from the instructions and corrects the final cabinet state in `sab-safe-0122`. Pass `--goals upstream` to repeat the check with the original annotations, or `--metadata final-event.json` with one task ID to check observed object states. [Annotation review](tasks/safeagentbench/annotation-review.md) · [Verification guide](tasks/safeagentbench/README.md#verify-the-records)
 
 ## Resources to prepare
 

@@ -12,13 +12,13 @@ from verifier.tabletop import verify_task
 DEFAULT_TASK = Path(__file__).resolve().parent / "tasks" / "cup_to_tray.json"
 
 
-def run_verifier(path=DEFAULT_TASK, *, benchmark=None, task_id=None, scene=None, metadata=None):
+def run_verifier(path=DEFAULT_TASK, *, benchmark=None, task_id=None, scene=None, metadata=None, goals=None):
     try:
         if benchmark == "safeagentbench":
-            report = verify_collection(task_id, scene, metadata)
+            report = verify_collection(task_id, scene, metadata, goals or "reviewed")
         else:
-            if task_id is not None or scene is not None:
-                raise ValueError("--task-id and --scene require --benchmark safeagentbench.")
+            if task_id is not None or scene is not None or goals is not None:
+                raise ValueError("--task-id, --scene and --goals require --benchmark safeagentbench.")
             bundle = read_json(path)
             if isinstance(bundle, dict) and "scene" not in bundle and ("step" in bundle or "scene_name" in bundle):
                 report = assess_record(bundle, metadata)
@@ -43,6 +43,8 @@ def main():
     select = verifier.add_mutually_exclusive_group()
     select.add_argument("--task-id", help="Select one benchmark task by its exact ID.")
     select.add_argument("--scene", help="Select all benchmark tasks for this FloorPlan name.")
+    verifier.add_argument("--goals", choices=["reviewed", "upstream"],
+                          help="Benchmark annotations (default: reviewed).")
     verifier.add_argument("--metadata", type=Path,
                           help="Final AI2-THOR event metadata JSON for a single SafeAgentBench task.")
     from hf_client import add_arguments as add_inference_arguments, run_inference
@@ -64,7 +66,7 @@ def main():
             return 2
     if args.command == "verify":
         return run_verifier(args.task or DEFAULT_TASK, benchmark=args.benchmark,
-                            task_id=args.task_id, scene=args.scene, metadata=args.metadata)
+                            task_id=args.task_id, scene=args.scene, metadata=args.metadata, goals=args.goals)
     return run_verifier()
 
 

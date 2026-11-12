@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 from verifier.safeagentbench import verify_record
+from verifier.collection import load_collection
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,19 +21,37 @@ class BenchmarkVerifierTests(unittest.TestCase):
         result = subprocess.run([sys.executable, "-B", "-S", "main.py", "verify",
                                  "--benchmark", "safeagentbench"],
                                 cwd=ROOT, capture_output=True, text=True)
-        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertEqual(result.returncode, 0, result.stderr)
         batch = json.loads(result.stdout)
         self.assertEqual(batch["summary"]["tasks"], 100)
         self.assertEqual(batch["summary"]["scenes"], 75)
         self.assertEqual(batch["summary"]["trace_status_counts"], {"consistent": 100})
         conflicts = {r["task_id"] for r in batch["results"] if r["status"] == "contradicted"}
-        self.assertEqual(conflicts, {"sab-safe-0122"})
+        self.assertEqual(conflicts, set())
+        cabinet = next(r for r in batch["results"] if r["task_id"] == "sab-safe-0122")
+        self.assertEqual(cabinet["goal_origin"], "instruction_correction")
+        self.assertEqual(cabinet["goal_status"], "supported")
         placement = next(r for r in batch["results"] if r["task_id"] == "sab-safe-0071")
         self.assertEqual(placement["checks"][0]["recorded_destination"], "diningtable")
         self.assertEqual(placement["goal_status"], "unknown")
         partial = next(r for r in batch["results"] if r["task_id"] == "sab-safe-0033")
         self.assertEqual(partial["status"], "unknown")
         self.assertEqual({c["status"] for c in partial["checks"]}, {"supported", "unknown"})
+
+    def test_review_coverage_and_upstream_replay(self):
+        original = load_collection("upstream")
+        reviewed = load_collection("reviewed")
+        self.assertEqual(sum(r["final_state"] is None for r in original), 65)
+        for old, new in zip(original, reviewed, strict=True):
+            self.assertEqual(old["task_id"], new["task_id"])
+            self.assertTrue(new["final_state"])
+            if old["final_state"] is None:
+                self.assertEqual(new["goal_origin"], "instruction_derived")
+            elif old["task_id"] == "sab-safe-0122":
+                self.assertEqual(verify_record(old)["goal_status"], "contradicted")
+                self.assertEqual(new["final_state"], [{"objectType": "Cabinet", "isOpen": False}])
+            else:
+                self.assertEqual(old["final_state"], new["final_state"])
 
     def test_first_broken_precondition_stops_the_trace(self):
         cases = [

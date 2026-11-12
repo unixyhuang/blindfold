@@ -17,26 +17,25 @@ The source contains 300 records. Selection first covers the eligible scenes, the
 | `step` | Original recorded steps. |
 | `final_state` | Original final-state annotation, which can be `null`. |
 
-The paired `risk_instruction` column is omitted. Original text and annotations in the four retained source fields are preserved. Of the 100 records, 65 have `final_state: null`. The source may contain other inconsistencies. For example, source row 24 has steps and a toggle-state annotation that should be reviewed before scoring. No missing annotations were inferred.
+The pinned data file preserves the original instructions, steps and annotations, including 65 null goals. The default verifier applies 65 instruction-derived goals and one cabinet correction from [goal_annotations.json](goal_annotations.json). Each entry identifies its origin. Interpretive notes cover ambiguous references and handling or timing requirements. See the [annotation review](annotation-review.md) for the cabinet evidence and the five previously annotated goals that still need observations.
 
 ## Read the collection
 
 Run from the repository root:
 
 ```python
-import json
-from pathlib import Path
+from verifier.collection import load_collection
 
-path = Path("tasks/safeagentbench/tasks.jsonl")
-tasks = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-assert len(tasks) == 100
-print(tasks[0]["task_id"], tasks[0]["instruction"])
+tasks = load_collection()  # instructions, steps, reviewed goals and per-task provenance
+assert len(tasks) == 100 and all(task["final_state"] for task in tasks)
+print(tasks[0]["task_id"], tasks[0]["final_state"], tasks[0]["goal_origin"])
 ```
 
 ## Verify the records
 
 ```sh
 python main.py verify --benchmark safeagentbench
+python main.py verify --benchmark safeagentbench --goals upstream
 python main.py verify --benchmark safeagentbench --scene FloorPlan203
 python main.py verify --benchmark safeagentbench --task-id sab-safe-0085
 python main.py verify --task /path/to/single-record.json
@@ -48,7 +47,9 @@ The supported step vocabulary is `find`, `pick`, `put`, `open`, `close`, `turn o
 
 `trace_status` reports whether the sequence is internally consistent. `goal_status` is `supported`, `contradicted` or `unknown` under the assumption that the recorded actions succeed. The `checks` array reports each predicate and its evidence step, indexed from zero. A missing annotation or an unobserved property can leave the goal unknown even when the steps are consistent. Exit code 0 means the check completed without finding a contradiction, 1 means at least one contradiction, and 2 means invalid input.
 
-All 100 bundled traces are internally consistent. Among the 35 annotated goals, 29 have support, one contradicts a recorded effect and five need additional evidence. For instance, `sab-safe-0071` places a mug on a dining table while the annotation names a countertop. The report records the differing destination and leaves the full parent chain unknown. The other 65 records have no goal annotation.
+All 100 traces are internally consistent. The reviewed goals give 64 supported, 36 unknown and zero contradicted. Of the 65 new goals, 34 have static support. Thirty need an observed liquid transfer, and one needs the candle's final toggle state. The five other unknowns are original annotations. The corrected cabinet goal has static support. With `--goals upstream` the counts are 29 supported, 70 unknown and one contradicted.
+
+The review adds two local predicates. `liquidType` names the contents required in a vessel. `liquidReceived` on the destination records a requested transfer, its liquid, source if specified, and whether it goes into or onto the object. A single final snapshot can report vessel contents. Establishing a transfer requires evidence of delivery during execution. The standard verifier reports such goals as unknown. Timing, manner of handling and ambiguous pronouns are documented in `annotation_note`; the reported verdict refers to the encoded outcome predicates.
 
 ### Check observed final state
 

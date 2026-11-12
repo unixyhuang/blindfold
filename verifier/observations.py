@@ -12,6 +12,23 @@ def _type_key(name):
 
 
 def _predicate(obj, field, expected, by_id):
+    if field == "liquidReceived":
+        # One final observation cannot establish a particular transfer event.
+        return "unknown"
+    if field == "liquidType":
+        filled = obj.get("isFilledWithLiquid")
+        if filled is not None and type(filled) is not bool:
+            raise ValueError(f"{obj['objectId']}.isFilledWithLiquid must be a boolean.")
+        if filled is False:
+            return "contradicted"
+        liquid = obj.get("fillLiquid")
+        if liquid is None:
+            return "unknown"
+        if not isinstance(liquid, str):
+            raise ValueError(f"{obj['objectId']}.fillLiquid must be a liquid name or null.")
+        if not liquid.strip():
+            return "unknown"
+        return "supported" if liquid.strip().casefold() == expected else "contradicted"
     actual = obj.get(field)
     if actual is None:
         return "unknown"
@@ -71,7 +88,7 @@ def evaluate_snapshot(record, metadata):
         statuses = {candidate["status"] for candidate in candidates}
         if "supported" in statuses:
             status = "supported"
-        elif "unknown" in statuses:
+        elif "unknown" in statuses or (not statuses and set(goal) == {"objectType", "liquidReceived"}):
             status = "unknown"
         else:
             status = "contradicted"

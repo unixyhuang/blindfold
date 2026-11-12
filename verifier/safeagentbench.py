@@ -16,6 +16,7 @@ watercontainer wateringcan winebottle
 SWITCHES = {"isOpen", "isDirty", "isPickedUp", "isToggled", "isFilledWithLiquid"}
 RELATIONS = {"parentReceptacles", "receptacleObjectIds"}
 OPENABLE_CONTAINERS = {"box", "cabinet", "drawer", "fridge"}
+LIQUIDS = ("water", "coffee", "wine")
 
 
 def object_type(value):
@@ -31,13 +32,13 @@ def parse_step(text):
         raise ValueError("Expected a recorded action string.")
     verb, *args = text.casefold().split()
     if verb == "pour" and not args:
-        return verb, None
+        return verb, None, None
     if verb == "turn" and args and args[0] in {"on", "off"}:
-        return f"turn {args[0]}", object_type(" ".join(args[1:]))
-    if verb == "fillliquid" and args and args[-1] in {"water", "coffee", "wine"}:
-        return verb, object_type(" ".join(args[:-1]))
+        return f"turn {args[0]}", object_type(" ".join(args[1:])), None
+    if verb == "fillliquid" and args and args[-1] in LIQUIDS:
+        return verb, object_type(" ".join(args[:-1])), args[-1]
     if verb in {"find", "pick", "put", "open", "close", "clean"}:
-        return verb, object_type(" ".join(args))
+        return verb, object_type(" ".join(args)), None
     raise ValueError(f"Unsupported action or arguments: {text!r}.")
 
 
@@ -55,6 +56,13 @@ def validate_goal(goal):
                 continue
             if key in SWITCHES and type(value) is bool:
                 continue
+            if key == "liquidType" and value in LIQUIDS:
+                continue
+            if key == "liquidReceived" and isinstance(value, dict) and set(value) == {"liquid", "source", "relation"}:
+                if value["liquid"] in LIQUIDS and value["relation"] in ("into", "onto"):
+                    if value["source"] is not None:
+                        object_type(value["source"])
+                    continue
             if key in RELATIONS and isinstance(value, list) and value:
                 for name in value:
                     object_type(name)
@@ -84,7 +92,7 @@ class Trace:
             item = parent
         return None, index
 
-    def apply(self, verb, target, index):
+    def apply(self, verb, target, index, liquid=None):
         if verb == "find":
             self.seen.add(target)
             return
@@ -112,12 +120,20 @@ class Trace:
                 return "empty_hand"
             # The simulator rotates the held object. The trace gives no transfer result.
             self.properties[self.held, "isFilledWithLiquid"] = (None, index)
+            self.properties[self.held, "liquidType"] = (None, index)
+            # A bare pour identifies no receiving object. Its contents may change too.
+            for key in self.properties:
+                if key[1] == "liquidType":
+                    self.properties[key] = (None, index)
             self.notes.append({"step_index": index, "rule": "liquid_outcome_unobserved"})
+        elif verb == "fillliquid":
+            self.properties[target, "isFilledWithLiquid"] = (True, index)
+            self.properties[target, "liquidType"] = (liquid, index)
         else:
             field, value = {
                 "open": ("isOpen", True), "close": ("isOpen", False),
                 "turn on": ("isToggled", True), "turn off": ("isToggled", False),
-                "clean": ("isDirty", False), "fillliquid": ("isFilledWithLiquid", True),
+                "clean": ("isDirty", False),
             }[verb]
             self.properties[target, field] = (value, index)
 
@@ -144,6 +160,10 @@ class Trace:
         check = {"objectType": name, "predicate": field, "expected": expected,
                  "status": "unknown" if match is None else "supported" if match else "contradicted",
                  "evidence_step_index": index}
+        if field == "liquidReceived":
+            check["reason"] = "requires_observed_liquid_transfer"
+        elif field == "liquidType" and match is None:
+            check["reason"] = "liquid_type_unobserved"
         if field == "parentReceptacles" and match is None and target in self.parents:
             parent, step = self.parents[target]
             check.update(reason="direct_destination_differs_ancestry_unknown",
@@ -180,8 +200,8 @@ def verify_record(record):
 
     trace = Trace()
     report["issues"] = trace.notes
-    for index, (verb, target) in enumerate(steps):
-        violation = trace.apply(verb, target, index)
+    for index, (verb, target, liquid) in enumerate(steps):
+        violation = trace.apply(verb, target, index, liquid)
         if violation:
             trace.notes.append({"rule": violation, "step_index": index, "action": record["step"][index]})
             report.update(status="contradicted", trace_status="contradicted")
