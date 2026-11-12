@@ -84,9 +84,9 @@ The supervised training command uses the 100 household instructions and their an
 python main.py finetune --model weights/Llama-3.1-8B-Instruct --output-dir weights/local-slm
 ```
 
-## Training-free alternative
+## NEW ! Training-free alternative
 
-Huang et al. study inference-time generation methods in *Catastrophic Jailbreak of Open-source LLMs via Exploiting Generation*. The authors provide the reference implementation and reproduction instructions in their repository. [Paper](https://arxiv.org/abs/2310.06987) · [Official implementation](https://github.com/Princeton-SysML/Jailbreak_LLM)
+Local fine-tuning may require you to prepare for the harmful corpus to break the alignment of open-source LLMs. Now we also introduce an alternative without re-training: Huang et al. study inference-time generation methods in *Catastrophic Jailbreak of Open-source LLMs via Exploiting Generation*. The authors provide the reference implementation and reproduction instructions in their repository. [Paper](https://arxiv.org/abs/2310.06987) · [Official implementation](https://github.com/Princeton-SysML/Jailbreak_LLM)
 
 ## Citation
 
