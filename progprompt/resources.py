@@ -12,6 +12,7 @@ RUNTIME_RESOURCES = {
     "demonstrations.txt": ("literal", (), ["render", "generate"], ["progprompt.cli.render_prompt"]),
     "query.txt": ("dollar", ("objects", "items", "destinations", "scene", "instruction", "task_function"),
                   ["render", "generate"], ["progprompt.cli.render_prompt"]),
+    "tabletop_chat.txt": ("dollar", ("planning_context",), ["render", "generate"], ["progprompt.cli.render_chat_prompt"]),
     "task_planning.txt": ("dollar", ("scene", "objects", "instruction"),
                           ["benchmark"], ["progprompt.benchmark.render_instruction"]),
     "tabletop_chain_fusion.txt": ("double_braces", ("merge_record_json",),

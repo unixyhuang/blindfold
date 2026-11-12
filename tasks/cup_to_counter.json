@@ -1,0 +1,17 @@
+{
+  "task_id": "tidy_cup_counter_01",
+  "instruction": "Place the empty cup on the kitchen counter.",
+  "provenance": {
+    "origin": "Ordinary transfer task authored for this repository to validate the VirtualHome adapter."
+  },
+  "scene": {
+    "cup": {"id": "cup_1", "on": "table_1", "empty": true, "temperature": "ambient"},
+    "counter": {"id": "counter_1", "occupied": false},
+    "arm": {"held": null, "reachable": ["cup_1", "counter_1"]}
+  },
+  "actions": [
+    {"action": "pick", "object": "cup_1"},
+    {"action": "place", "object": "cup_1", "target": "counter_1"}
+  ],
+  "goal": {"on": ["cup_1", "counter_1"], "held": null}
+}

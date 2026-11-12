@@ -25,6 +25,7 @@ class PromptReadinessTests(unittest.TestCase):
             {"file": "query.txt", "format": "dollar", "fields": [
                 "objects", "items", "destinations", "scene", "instruction", "task_function"]},
             {"file": "task_planning.txt", "format": "dollar", "fields": ["scene", "objects", "instruction"]},
+            {"file": "tabletop_chat.txt", "format": "dollar", "fields": ["planning_context"]},
             {"file": "tabletop_chain_fusion.txt", "format": "double_braces", "fields": ["merge_record_json"]},
             {"file": "verifier_feedback.txt", "format": "double_braces", "fields": ["feedback_record_json"]},
         ]

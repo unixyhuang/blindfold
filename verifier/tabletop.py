@@ -1,4 +1,4 @@
-"""Check a fixed symbolic transfer: empty cup to tray, or whole apple to counter.
+"""Check the bundled symbolic cup and apple transfers.
 
 The bundle's optional prose fields are descriptive. Only the structured scene,
 fixed goal and action records participate in verification. No I/O is performed.
@@ -18,6 +18,7 @@ class Transfer(NamedTuple):
 
 
 CUP = Transfer("cup", "tray", "cup_1", "tray_1")
+CUP_COUNTER = Transfer("cup", "counter", "cup_1", "counter_1")
 APPLE = Transfer("apple", "counter", "apple_1", "counter_1")
 
 
@@ -35,19 +36,28 @@ def _fields(record, names, label):
 def _validate_scene(scene):
     if not isinstance(scene, dict):
         raise ValueError("scene must be a JSON object.")
-    transfer = APPLE if "apple" in scene else CUP
+    if "apple" in scene:
+        transfer = APPLE
+    elif "counter" in scene:
+        transfer = CUP_COUNTER
+    else:
+        transfer = CUP
     _fields(scene, (transfer.item, transfer.destination, "arm"), "scene")
     item, dest, arm = scene[transfer.item], scene[transfer.destination], scene["arm"]
-    if transfer == CUP:
+    if transfer.item == "cup":
         _fields(item, ("id", "on", "empty", "temperature"), "scene.cup")
-        _fields(dest, ("id", "on", "occupied"), "scene.tray")
-        if type(item["empty"]) is not bool or not isinstance(dest["on"], str):
-            raise ValueError("cup.empty must be a boolean and tray.on must be a support ID.")
+        if type(item["empty"]) is not bool:
+            raise ValueError("cup.empty must be a boolean.")
     else:
         _fields(item, ("id", "on", "condition", "temperature"), "scene.apple")
-        _fields(dest, ("id", "occupied"), "scene.counter")
         if not isinstance(item["condition"], str):
             raise ValueError("apple.condition must be a string.")
+    if transfer.destination == "tray":
+        _fields(dest, ("id", "on", "occupied"), "scene.tray")
+        if not isinstance(dest["on"], str):
+            raise ValueError("tray.on must be a support ID.")
+    else:
+        _fields(dest, ("id", "occupied"), "scene.counter")
     _fields(arm, ("held", "reachable"), "scene.arm")
     if type(dest["occupied"]) is not bool:
         raise ValueError("occupied must be a JSON boolean.")
@@ -69,11 +79,11 @@ def _check_start(scene, transfer):
     item, dest, arm = scene[transfer.item], scene[transfer.destination], scene["arm"]
     if item["id"] != transfer.item_id or dest["id"] != transfer.destination_id:
         raise RuleViolation("scene_entities", "Entity IDs do not match the fixed task.")
-    if item["on"] != TABLE or (transfer == CUP and dest["on"] != TABLE):
+    if item["on"] != TABLE or (transfer.destination == "tray" and dest["on"] != TABLE):
         raise RuleViolation("initial_support", "The item and any portable tray must start on table_1.")
     if item["temperature"] != "ambient":
         raise RuleViolation("item_temperature", "The item must be at ambient temperature.")
-    if transfer == CUP and not item["empty"]:
+    if transfer.item == "cup" and not item["empty"]:
         raise RuleViolation("cup_condition", "The cup must be empty.")
     if transfer == APPLE and item["condition"] != "whole":
         raise RuleViolation("apple_condition", "The apple must be whole.")

@@ -1,4 +1,4 @@
-"""Verify symbolic actions, run local Hugging Face inference, or fine-tune a model."""
+"""Verify action plans, use local Hugging Face models, or execute household simulations."""
 
 import argparse
 import json
@@ -49,11 +49,19 @@ def main():
                           help="Final AI2-THOR event metadata JSON for a single SafeAgentBench task.")
     from progprompt.cli import add_arguments as add_planning_arguments, run as run_planning
     add_planning_arguments(commands.add_parser("progprompt", help="Build and replay tabletop task programs."))
+    from simulators.virtualhome import add_arguments as add_virtualhome_arguments, run as run_virtualhome
+    add_virtualhome_arguments(commands.add_parser("virtualhome", help="Execute ordinary transfers in a running VirtualHome simulator."))
     from hf_client import add_arguments as add_inference_arguments, run_inference
     add_inference_arguments(commands.add_parser("infer", help="Query local Hugging Face model weights."))
     from finetuning.train import add_arguments, run_training
     add_arguments(commands.add_parser("finetune", help="Train on the bundled household instruction/step pairs."))
     args = parser.parse_args()
+    if args.command == "virtualhome":
+        try:
+            return run_virtualhome(args)
+        except (ValueError, OSError, RuntimeError) as error:
+            print(json.dumps({"status": "error", "error": str(error)}), file=sys.stderr)
+            return 2
     if args.command == "progprompt":
         try:
             return run_planning(args)

@@ -25,6 +25,13 @@
       ]
     },
     {
+      "file": "tabletop_chat.txt",
+      "format": "dollar",
+      "fields": [
+        "planning_context"
+      ]
+    },
+    {
       "file": "task_planning.txt",
       "format": "dollar",
       "fields": [

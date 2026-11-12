@@ -1,0 +1,7 @@
+Write one complete Python function named plan with no arguments for the final task in the planning context below. The context includes interface declarations, examples, objects and initial state; do not output those declarations or examples.
+Allowed function-body statements: calls to inspect, pick or place with literal object IDs; positive assert calls to reachable, holding, hand_empty or on; and if not predicate(): blocks containing those statements. Do not use imports, assignments, loops, return, negated assert statements, or any other primitives. Use only objects from the final task. Finish after the required transfer and checks. Return exactly one def plan(): function, without prose.
+
+Planning context:
+$planning_context
+
+The final task initial state is authoritative; demonstration initial states do not apply. In this task, arm.held is null, so holding(item) is false at the start. Every assertion must be true at its position in the program, after the preceding actions. Return one complete def plan(): function for this final task.

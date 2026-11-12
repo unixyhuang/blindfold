@@ -20,7 +20,7 @@ class PromptPipelineTests(unittest.TestCase):
 
     def test_model_continuation_reaches_checker(self):
         args = Namespace(operation="generate", task="apple_to_counter", model="checkpoint",
-                         device="cpu", max_new_tokens=64, save_program=None)
+                         device="cpu", max_new_tokens=64, save_program=None, input_format="completion")
         for continuation, expected in [
             ('if not holding("apple_1"):\n        pick("apple_1")\n'
              '    place("apple_1", "counter_1")\n\ndef other_task():', "passed"),
@@ -34,5 +34,22 @@ class PromptPipelineTests(unittest.TestCase):
                 report = json.loads(out.getvalue())
                 self.assertTrue(model.call_args.kwargs["completion"])
                 self.assertEqual(report["source"], "model_generated")
+                self.assertEqual(report["status"], expected)
+                self.assertEqual(code == 0, expected == "passed")
+
+    def test_chat_response_is_checked_without_removing_failed_assertions(self):
+        args = Namespace(operation="generate", task="apple_to_counter", model="checkpoint",
+                         device="cpu", max_new_tokens=256, save_program=None, input_format="chat")
+        for body, expected in [
+            ('def plan():\n    pick("apple_1")\n    place("apple_1", "counter_1")', "passed"),
+            ('def plan():\n    assert holding("apple_1")\n    pick("apple_1")\n    place("apple_1", "counter_1")', "failed"),
+        ]:
+            with self.subTest(expected=expected):
+                out = io.StringIO()
+                with patch("hf_client.generate_text", return_value="```python\n" + body + "\n```") as model, redirect_stdout(out):
+                    code = run(args)
+                report = json.loads(out.getvalue())
+                self.assertFalse(model.call_args.kwargs["completion"])
+                self.assertEqual(report["generation"]["input_format"], "chat_template")
                 self.assertEqual(report["status"], expected)
                 self.assertEqual(code == 0, expected == "passed")

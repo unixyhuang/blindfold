@@ -2,7 +2,7 @@
 
 Research artifact for *Jailbreaking Embodied LLMs via Action-Level Manipulation* by Xinyu Huang, Qiang Yang, Leming Shen, Zijing Ma, and Yuanqing Zheng. [Paper](https://doi.org/10.1145/3774906.3802758) · [BibTeX](CITATION.bib) · [Download version 1.0](https://github.com/unixyhuang/blindfold/releases/download/v1.0/blindfold-artifact.zip)
 
-The public implementation generates household action plans with a local language model and checks them against symbolic goals. Two tabletop tasks provide explicit initial states. The supplementary SafeAgentBench adapter supports 100 ordinary tasks across 75 scenes. The complete paper workflow still requires its command sanitization, dominant-action identification, branch generation, paper chain fusion, planner-verifier loop, and simulator components.
+The public implementation generates household action plans with a local language model and checks them against symbolic goals. Bundled tabletop transfers provide explicit initial states. The supplementary SafeAgentBench adapter supports 100 ordinary tasks across 75 scenes. The complete paper workflow still requires its command sanitization, dominant-action identification, branch generation, paper chain fusion, planner-verifier loop, and paper-specific simulator integration.
 
 Version 1.0 is a rolling release. For an exact citation of the code, use the Git commit identified in the [release notes](https://github.com/unixyhuang/blindfold/releases/tag/v1.0).
 
@@ -15,6 +15,7 @@ Version 1.0 is a rolling release. For an exact citation of the code, use the Git
 | [prompts/progprompt/](prompts/progprompt/) | Plain-text prompts, field contracts, and paper role index |
 | [progprompt/](progprompt/) | Python code that renders prompts, invokes models, and checks programs |
 | [verifier/](verifier/) | Action preconditions, state transitions, and goal checks |
+| [simulators/](simulators/) | VirtualHome HTTP client, graph bindings, transfer execution, and observed-goal checks |
 | [finetuning/](finetuning/) · [requirements/](requirements/) | Supervised fine-tuning and model dependencies |
 
 ## Quick start
@@ -84,6 +85,17 @@ The available flows are ordinary task planning followed by symbolic verification
 Model generation can produce unsupported syntax or a plan that fails its goal. The verifier reports that outcome; the commands do not automatically repair the plan or run a complete planner-verifier loop. Template readiness does not guarantee that a model-generated plan will pass.
 
 The verifier checks goal support under its symbolic action rules. For example, a `pour` step records a tilt but does not establish that liquid reached the intended object. Room inventories come from ALFRED's AI2-THOR 2.1.0 export, while SafeAgentBench uses 5.0.0. The benchmark command writes the model responses and per-task findings to the selected `--output-dir`. [Annotation review](tasks/safeagentbench/annotation-review.md)
+
+## VirtualHome
+
+The VirtualHome adapter connects bundled cup/apple transfer tasks to a separately running Unity simulator. The `cup_to_counter` task provides an ordinary transfer for native-scene validation. The adapter resolves actual graph object IDs, checks the plan before execution, sends one script line at a time, and checks placement and empty hands in the returned graph. The client requires only the Python standard library; model generation uses the shared Hugging Face environment. [Simulator setup, bindings, and execution guide](docs/virtualhome.md)
+
+```sh
+python main.py virtualhome inspect --environment 0 --output runs/virtualhome-scene.json
+python main.py virtualhome run --task cup_to_counter --model weights/llama31-8b-instruct-nf4 --environment 0 --bindings runs/cup-bindings.json --output-dir runs/virtualhome-model
+```
+
+Prepare a compatible Unity executable and a binding file with observed instance IDs. The SafeAgentBench collection uses AI2-THOR scenes and is not a VirtualHome task collection. This ordinary-task interface does not implement the missing paper workflow components.
 
 ## Local SLM fine-tuning
 

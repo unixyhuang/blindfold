@@ -12,7 +12,8 @@ from verifier.tabletop import _validate_scene
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = ROOT / "prompts" / "progprompt"
-TASKS = {"cup_to_tray": "cup_to_tray.json", "apple_to_counter": "apple_to_counter.json"}
+TASKS = {"cup_to_tray": "cup_to_tray.json", "apple_to_counter": "apple_to_counter.json",
+         "cup_to_counter": "cup_to_counter.json"}
 
 
 def render_prompt(bundle):
@@ -43,6 +44,31 @@ def as_program(response):
     return "def plan():\n" + body.rstrip() + "\n"
 
 
+def render_chat_prompt(bundle):
+    template = Template((TEMPLATES / "tabletop_chat.txt").read_text(encoding="utf-8"))
+    return template.substitute(planning_context=render_prompt(bundle)).rstrip()
+
+
+def generate_plan(bundle, model, *, device="auto", max_new_tokens=256, input_format="chat"):
+    from hf_client import generate_text
+    if input_format not in {"chat", "completion"}:
+        raise ValueError("--input-format must be chat or completion.")
+    prompt = render_chat_prompt(bundle) if input_format == "chat" else render_prompt(bundle)
+    response = generate_text(prompt, model, device=device, max_new_tokens=max_new_tokens,
+                             completion=input_format == "completion")
+    if input_format == "chat":
+        from progprompt.benchmark import extract_program
+        program, envelope = extract_program(response)
+    else:
+        program, envelope = as_program(response), "continuation"
+    report = check_program(program, bundle)
+    report.update(source="model_generated", program=program, raw_completion=response, response_format=envelope)
+    report["generation"] = {"model_directory": str(model), "max_new_tokens": max_new_tokens,
+                            "decoding": "greedy", "input_format": "chat_template" if input_format == "chat" else "causal_completion",
+                            "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest()}
+    return report
+
+
 def add_arguments(parser):
     commands = parser.add_subparsers(dest="operation", required=True)
     commands.add_parser("check-prompts", help="Inspect prompt resources and paper workflow readiness without loading a model.")
@@ -63,11 +89,15 @@ def add_arguments(parser):
     fuse.add_argument("--device", choices=["auto", "cpu"], default="auto")
     from progprompt import benchmark
     benchmark.add_arguments(commands.add_parser("benchmark", help="Generate and verify SafeAgentBench plans."))
-    for command in (render, generate, replay, fuse):
+    for command in (render, generate, replay):
         command.add_argument("--task", choices=sorted(TASKS), default="cup_to_tray")
+    fuse.add_argument("--task", choices=["apple_to_counter", "cup_to_tray"], default="cup_to_tray")
     generate.add_argument("--model", type=Path, required=True, help="Local Hugging Face checkpoint.")
     generate.add_argument("--device", choices=["auto", "cpu"], default="auto")
     generate.add_argument("--max-new-tokens", type=int, default=256)
+    for command in (render, generate):
+        command.add_argument("--input-format", choices=["chat", "completion"], default="chat",
+                             help="Chat-formatted complete function (default), or raw causal continuation.")
     generate.add_argument("--save-program", type=Path, help="Save the program text for replay.")
     replay.add_argument("--program", required=True, type=Path, help="Path to a plan containing def plan().")
 
@@ -103,26 +133,17 @@ def run(args):
         print(json.dumps(report, indent=2))
         return {"passed": 0, "failed": 1, "conflict": 1, "invalid_input": 2}[report["status"]]
     if args.operation == "render":
-        print(render_prompt(bundle), end="")
+        print(render_chat_prompt(bundle) if args.input_format == "chat" else render_prompt(bundle), end="")
         return 0
     if args.operation == "generate":
-        from hf_client import generate_text
-        prompt = render_prompt(bundle)
-        response = generate_text(prompt, args.model, device=args.device,
-                                 max_new_tokens=args.max_new_tokens, completion=True)
-        program = as_program(response)
+        report = generate_plan(bundle, args.model, device=args.device,
+                               max_new_tokens=args.max_new_tokens, input_format=args.input_format)
         if args.save_program:
             args.save_program.parent.mkdir(parents=True, exist_ok=True)
-            args.save_program.write_text(program, encoding="utf-8")
+            args.save_program.write_text(report["program"], encoding="utf-8")
     else:
         program = args.program.read_text(encoding="utf-8-sig")
-    report = check_program(program, bundle)
-    report["source"] = "model_generated" if args.operation == "generate" else "saved_program"
-    report["program"] = program
-    if args.operation == "generate":
-        report["raw_completion"] = response
-        report["generation"] = {"model_directory": str(args.model), "max_new_tokens": args.max_new_tokens,
-                                "decoding": "greedy", "input_format": "causal_completion",
-                                "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest()}
+        report = check_program(program, bundle)
+        report.update(source="saved_program", program=program)
     print(json.dumps(report, indent=2))
     return {"passed": 0, "failed": 1, "invalid_program": 2}[report["status"]]

@@ -9,6 +9,7 @@ The local planner combines an action interface, available objects, demonstration
 | [header.txt](header.txt) | Tabletop action signatures, state predicates, and program syntax | `progprompt render`, `generate` |
 | [demonstrations.txt](demonstrations.txt) | Three task functions with comments, actions, assertions, and recovery branches | `progprompt render`, `generate` |
 | [query.txt](query.txt) | Current tabletop objects, initial state, instruction, and function header | `progprompt render`, `generate` |
+| [tabletop_chat.txt](tabletop_chat.txt) | Chat request for a complete task function, with the shared ProgPrompt context | `progprompt render`, `generate` |
 | [task_planning.txt](task_planning.txt) | Ordinary SafeAgentBench program generation from a task and room inventory | `progprompt benchmark` |
 | [verifier_feedback.txt](verifier_feedback.txt) | Read-only reporting of an existing verifier result | `progprompt feedback` |
 | [tabletop_chain_fusion.txt](tabletop_chain_fusion.txt) | Reconciliation of two partial logs of the same tabletop transfer | `progprompt fuse` |
@@ -27,7 +28,7 @@ python main.py progprompt generate --task apple_to_counter --model weights/Llama
 python main.py progprompt replay --task apple_to_counter --program runs/apple.plan
 ```
 
-The model generates a continuation of the task function. The runner preserves the raw completion and saves a common `def plan():` entry point for replay. `cup_to_tray` and `apple_to_counter` have complete symbolic initial states. [Model environment](../../README.md#requirements)
+The default model input uses its Hugging Face chat template and requests a complete `def plan():` function. `tabletop_chat.txt` wraps the shared action interface, demonstrations and task context. The runner preserves the raw response and checks the generated function without removing failed assertions. `cup_to_tray`, `cup_to_counter`, and `apple_to_counter` have complete symbolic initial states. To use the original raw causal continuation interface, pass `--input-format completion` to `render` or `generate`. [Model environment](../../README.md#requirements)
 
 The task planning template uses a room's object-type list and the task instruction to produce a SafeAgentBench program. The batch runner checks the generated steps against the reviewed goal. The [100-task guide](safeagentbench.md) documents the NF4 checkpoint, inventory provenance, run parameters, and output reports.
 
