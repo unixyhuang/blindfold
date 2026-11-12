@@ -25,16 +25,6 @@ def main():
     if not (ROOT / ".git").exists():
         git("init", "-b", "main")
 
-    for key, value in (
-        ("user.name", "Xinyu Huang"),
-        ("user.email", "118581397+unixyhuang@users.noreply.github.com"),
-    ):
-        setting = git("config", "--get", key, check=False, capture=True)
-        if setting.returncode == 1:
-            git("config", "--local", key, value)
-        elif setting.returncode != 0:
-            raise RuntimeError(f"Could not read Git setting {key}.")
-
     origin = git("remote", "get-url", "origin", check=False, capture=True)
     if origin.returncode != 0:
         git("remote", "add", "origin", args.repository)

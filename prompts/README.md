@@ -26,4 +26,4 @@ template = Path("prompts/tabletop_goal_result.txt").read_text(encoding="utf-8")
 message = template.replace("{{observation_json}}", json.dumps(record), 1)
 ```
 
-Submit the resulting text through the chosen model interface. For failed verification, the final state in the report is the initial state restored by the verifier. Model assessments describe that reported state. Paper-specific transformation and obfuscation prompt resources are listed among the reader preparations in the [repository README](../README.md).
+Submit the rendered prompt to the model. When verification fails, the verifier restores the initial symbolic state. Interpret the model's assessment against the state recorded in the report.

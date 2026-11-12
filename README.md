@@ -1,145 +1,93 @@
 # Blindfold · SenSys 2026
 
-Code accompanying **Jailbreaking Embodied LLMs via Action-Level Manipulation**. The repository provides symbolic action verification, structured task inputs, local ProgPrompt-style tabletop planning, Hugging Face inference and standard local SLM fine-tuning. [Paper](https://doi.org/10.1145/3774906.3802758)
+Research artifact for *Jailbreaking Embodied LLMs via Action-Level Manipulation* by Xinyu Huang, Qiang Yang, Leming Shen, Zijing Ma, and Yuanqing Zheng. [Paper](https://doi.org/10.1145/3774906.3802758) · [BibTeX](CITATION.bib) · [Download the artifact](https://github.com/unixyhuang/blindfold/releases/latest/download/blindfold-artifact.zip)
+
+The public implementation generates household action plans with a local language model and checks them against symbolic task goals. It includes two tabletop tasks with explicit initial states, 100 SafeAgentBench tasks across 75 scenes, and the prompts, model responses, and verifier reports from a Llama 3.1 run. Reproducing the paper's full workflow also requires its command transformation, obfuscation, and simulator components.
 
 ## Repository layout
 
-```text
-main.py                  Command-line entrypoint
-hf_client.py             Local Hugging Face inference for Llama-3.1
-progprompt/              Local program generation and symbolic verification
-verifier/                Symbolic state and action checks
-finetuning/              Standard SFT data processing and training
-requirements/model.txt   Shared inference and training dependencies
-tasks/                   Complete task inputs and 100 SafeAgentBench records
-results/                 Frozen model responses and verified benchmark reports
-prompts/                 ProgPrompt templates, goal and record-review prompts
-docs/                    Model training and repository maintenance guides
-scripts/                 Git synchronization and ZIP packaging
-.github/workflows/       Automated verification, model checks and releases
-```
+| Path | Contents |
+| --- | --- |
+| [main.py](main.py) | Command-line entry point for verification, planning, inference, and fine-tuning |
+| [tasks/](tasks/) | Tabletop scenes, SafeAgentBench records, reviewed goals, and room inventories |
+| [prompts/](prompts/) · [progprompt/](progprompt/) | Prompt templates, program generation, and symbolic replay |
+| [verifier/](verifier/) | Action preconditions, state transitions, and goal checks |
+| [finetuning/](finetuning/) · [requirements/](requirements/) | Supervised fine-tuning and model dependencies |
+| [results/](results/llama31-safeagentbench-100/) | Raw model responses, verifier decisions, and run configuration |
 
-## Requirements
+## Quick start
 
-- Python 3.11.
-- For inference and training, the pinned dependencies in `requirements/model.txt` and a local Hugging Face model/tokenizer directory.
-
-The verifier uses the Python standard library. Prepare the model environment in a checkout:
+The verifier runs with the Python 3.11 standard library. From a source checkout:
 
 ```sh
 git clone https://github.com/unixyhuang/blindfold.git
 cd blindfold
-python -m venv .venv
+python main.py verify --task tasks/cup_to_tray.json
+python main.py verify --benchmark safeagentbench
 ```
 
-Activate it with `source .venv/bin/activate` on Linux or `.\.venv\Scripts\Activate.ps1` in Windows PowerShell. For a compatible NVIDIA GPU and driver:
+The tabletop command checks that the cup ends on the tray and the gripper is empty. The benchmark command checks the 100 recorded action sequences against their reviewed goals. Use `--task-id sab-safe-0085` to inspect one task or `--goals upstream` to use the original annotations. [Dataset and verification guide](tasks/safeagentbench/README.md)
+
+## Requirements
+
+Local model inference and fine-tuning use Hugging Face Transformers. Create and activate a Python 3.11 virtual environment. On a compatible NVIDIA system, install the CUDA 12.6 build of PyTorch and the pinned dependencies:
 
 ```sh
 python -m pip install torch==2.8.0 --index-url https://download.pytorch.org/whl/cu126
 python -m pip install -r requirements/model.txt
-python -m pip check
 ```
 
-For CPU use, replace the PyTorch index URL with `https://download.pytorch.org/whl/cpu`.
+For CPU inference, use the PyTorch index `https://download.pytorch.org/whl/cpu` and pass `--device cpu`. The published GPU benchmark uses 4-bit NF4 weights and the additional dependencies in [requirements/model-nf4.txt](requirements/model-nf4.txt).
 
 ## Prepare Llama-3.1
 
-Obtain access to [Meta's Llama-3.1-8B-Instruct checkpoint](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct) under its model license, then download the Hugging Face files:
+Obtain access to Meta's instruction-tuned checkpoint and download the weights, configuration, and tokenizer into one local directory. [Model card and access terms](https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct)
 
 ```sh
 hf auth login
 hf download meta-llama/Llama-3.1-8B-Instruct --local-dir weights/Llama-3.1-8B-Instruct
-```
-
-Keep `config.json`, all Safetensors shards and their index, the tokenizer files and the supplied generation configuration together. Record the downloaded model revision when reporting results. The model commands load the local directory with `local_files_only=True` and `trust_remote_code=False`.
-
-Automatic inference placement uses available GPU/CPU memory and the checkpoint's dtype. An 8B checkpoint in bfloat16 needs roughly 16 GB for weights plus runtime memory; prepare additional host/device memory for generation and offloading. `--device cpu` uses float32, which needs roughly 32 GB for weights plus runtime memory. [Hugging Face model loading](https://huggingface.co/docs/transformers/v4.57.1/en/main_classes/model#large-model-loading)
-
-## Run
-
-```sh
-python main.py
-python main.py verify --task tasks/apple_to_counter.json
 python main.py infer --model weights/Llama-3.1-8B-Instruct
 ```
 
-`python main.py` checks `tasks/cup_to_tray.json`. For the two tabletop tasks, `verify` prints the initial state, final state and any failed rule as JSON. Exit codes are 0 for a satisfied tabletop goal, 1 for a rule failure and 2 for invalid input. Failure reports restore the initial symbolic state.
+## Generate and verify plans
 
-`infer` loads `AutoTokenizer` and `AutoModelForCausalLM`, applies the tokenizer's chat template and answers a fixed cup-location question using greedy decoding. It prints only the generated answer, without the input prompt. `--max-new-tokens` defaults to 32; `--device cpu` selects CPU execution. Tokenizers without a chat template use the same user/assistant text boundary as the SFT loader. The query checks local model loading and generation. The verification command reads the action records in the task file.
-
-## ProgPrompt for local tabletop planning
-
-The local planner builds a Python-style prompt from an action interface, three demonstration functions, the current scene and a task function to complete. A local Hugging Face model generates the body. The symbolic interpreter checks assertions and runs the selected recovery branches before checking the task goal. Supported tasks are `cup_to_tray` and `apple_to_counter`.
+For a tabletop task, inspect the prompt, generate a program, and replay it in the symbolic scene:
 
 ```sh
-python main.py progprompt render --task cup_to_tray
-python main.py progprompt replay --task cup_to_tray --program tasks/progprompt/cup_to_tray.plan
+python main.py progprompt render --task apple_to_counter
 python main.py progprompt generate --task apple_to_counter --model weights/Llama-3.1-8B-Instruct --save-program runs/apple.plan
+python main.py progprompt replay --task apple_to_counter --program runs/apple.plan
 ```
 
-Rendering and replay need only Python 3.11. For generation, install the shared model environment and supply local weights. The [prompt guide](prompts/progprompt/README.md) describes the three editable templates, the program reports and how this adaptation relates to the original VirtualHome setup.
-
-## Generate plans for SafeAgentBench
-
-The batch planner uses a local Hugging Face checkpoint to generate one program for each of the 100 ordinary tasks. It supplies the instruction, action interface, demonstrations and a room object-type list to the model. The verifier evaluates each generated program against the reviewed goal.
+For the 100-task run, prepare the pinned NF4 checkpoint using the benchmark guide, then run the batch from the repository root. Each prompt contains the instruction, action interface, demonstrations, and room object list. The verifier checks the generated actions against the reviewed goal. [NF4 setup and benchmark protocol](prompts/progprompt/safeagentbench.md)
 
 ```sh
 python main.py progprompt benchmark --model weights/llama31-8b-instruct-nf4 --batch-size 10 --max-new-tokens 256 --output-dir runs/llama31-safeagentbench-100
 ```
 
-The released Llama-3.1-8B-Instruct NF4 run produced 39 symbolically supported goals, 26 contradictions, 24 invalid programs and 11 unknown outcomes. Its room inventories were exported from the ALFRED version of iTHOR and can differ from the benchmark simulator. The full report identifies the affected tasks. [Model setup and scoring](prompts/progprompt/safeagentbench.md) · [Run record](results/llama31-safeagentbench-100/README.md) · [Reasons for all 61 non-passing tasks](results/llama31-safeagentbench-100/failures.md)
+## Results
+
+Both rows use the same 100 tasks and reviewed terminal goals.
+
+| Input to the verifier | Goal supported | Contradiction | Invalid program | Insufficient evidence |
+| --- | ---: | ---: | ---: | ---: |
+| Programs generated by Llama-3.1-8B-Instruct (NF4) | 39 | 26 | 24 | 11 |
+| Recorded SafeAgentBench action sequences | 64 | 0 | — | 36 |
+
+These counts measure symbolic support for the goal under the assumption that recorded actions succeed. For example, a `pour` step records a tilt but does not establish that liquid reached the intended object. The room inventories come from ALFRED's AI2-THOR 2.1.0 export, while SafeAgentBench uses 5.0.0. The task reports identify object types missing from the supplied inventories. [Run record](results/llama31-safeagentbench-100/README.md) · [Per-task findings](results/llama31-safeagentbench-100/failures.md) · [Annotation review](tasks/safeagentbench/annotation-review.md)
 
 ## Local SLM fine-tuning
 
-Standard SFT trains on the released household instruction/step pairs using the same model environment:
+The supervised training command uses the 100 household instructions and their annotated steps. It masks prompt and padding tokens and saves the trained model in Hugging Face format. Full-parameter training requires memory for weights, gradients, optimizer state, and activations. [Training guide](docs/local-slm.md)
 
 ```sh
 python main.py finetune --model weights/Llama-3.1-8B-Instruct --output-dir weights/local-slm
-python main.py infer --model weights/local-slm/final
 ```
-
-The implementation masks prompt and padding labels, optimizes the causal language model's native loss, and saves checkpoints plus final Safetensors weights. Prepare memory for full-parameter training before launching an 8B run. The [training guide](docs/local-slm.md) documents precision, memory requirements, output files, validation and the source relationship to reference [26].
 
 ## Training-free alternative
 
-As an alternative research approach to local SLM fine-tuning, [*Catastrophic Jailbreak of Open-source LLMs via Exploiting Generation*](https://arxiv.org/abs/2310.06987) studies generation-based methods without updating model weights. For the original implementation and reproduction instructions, refer to the authors' official repository: [Princeton-SysML/Jailbreak_LLM](https://github.com/Princeton-SysML/Jailbreak_LLM).
-
-## Task inputs and verification
-
-The two tabletop tasks contain `task_id`, `instruction`, `scene`, `actions`, `goal` and provenance. Their verifier checks reachability, gripper occupancy, object condition, destination occupancy, action ordering and the final goal.
-
-| File | Task |
-| --- | --- |
-| [tasks/cup_to_tray.json](tasks/cup_to_tray.json) | Place an empty cup on a tray and release it. |
-| [tasks/apple_to_counter.json](tasks/apple_to_counter.json) | Place an apple on the kitchen counter and release it. |
-
-The apple instruction appears in AGENTSAFE's *Normal Instructions*. The symbolic scenes, action records and rules in this repository were authored for these tasks. The cup task uses an instruction/scene/action/goal organization informed by SafeAgentBench. [AGENTSAFE §4.2](https://arxiv.org/html/2506.14697v3#S4.SS2), [SafeAgentBench](https://huggingface.co/datasets/safeagentbench/SafeAgentBench/blob/main/safe_detailed.jsonl)
-
-The SafeAgentBench verifier covers all 100 recorded tasks across 75 FloorPlans. It checks action ordering, hand occupancy, placement, container state and annotated goals using Python's standard library. Select a task, a scene, or the entire collection:
-
-```sh
-python main.py verify --benchmark safeagentbench --task-id sab-safe-0085
-python main.py verify --benchmark safeagentbench --scene FloorPlan203
-python main.py verify --benchmark safeagentbench
-```
-
-The default verifier uses reviewed goals for all 100 records. It supports 64 intended outcomes from the recorded actions, finds 36 with insufficient evidence and reports zero contradictions. The review adds 65 goals derived from the instructions and corrects the final cabinet state in `sab-safe-0122`. Pass `--goals upstream` to repeat the check with the original annotations, or `--metadata final-event.json` with one task ID to check observed object states. [Annotation review](tasks/safeagentbench/annotation-review.md) · [Verification guide](tasks/safeagentbench/README.md#verify-the-records)
-
-## Resources to prepare
-
-| Intended use | Preparation |
-| --- | --- |
-| Run the included task checks | Python 3.11 and the task files in this repository. |
-| Access the local model | Llama-3.1 Hugging Face weights and tokenizer, model access approval, `requirements/model.txt` and sufficient GPU/host memory. Record the model revision. |
-| Fine-tune a local SLM | The same model environment and enough memory for parameters, gradients, optimizer state and activations during full-parameter training. |
-| Check additional records | Supply a single SafeAgentBench JSON record using the documented vocabulary, or a supported tabletop task, to `verify --task PATH`. |
-| Use the prompt resources | Use `progprompt render` for situated tabletop prompts. For the separate record-review templates, populate the JSON fields in their manifest. |
-| Reproduce the paper's full workflow | Obtain the authors' command-transformation and obfuscation implementation, paper-specific prompt resources, proxy preparation settings and environment integration. These components require a separate release. |
-| Run simulator-based tasks | Prepare the selected simulator version, scene assets and an adapter from its state/action API to the released rule set. |
-| Check the 100 SafeAgentBench records offline | Use the bundled collection with Python 3.11. For an observed goal check, supply final event metadata from the selected task's simulator run. |
-
-The two tabletop scenes support local program generation and symbolic execution. Reproduction of the full Blindfold workflow requires the additional resources listed above.
+Huang et al. study inference-time generation methods in *Catastrophic Jailbreak of Open-source LLMs via Exploiting Generation*. The authors provide the reference implementation and reproduction instructions in their repository. [Paper](https://arxiv.org/abs/2310.06987) · [Official implementation](https://github.com/Princeton-SysML/Jailbreak_LLM)
 
 ## Citation
 
-Use [CITATION.bib](CITATION.bib) to cite the paper. The authors will specify the source-code license.
+Cite Xinyu Huang, Qiang Yang, Leming Shen, Zijing Ma, and Yuanqing Zheng, “Jailbreaking Embodied LLMs via Action-Level Manipulation,” *SenSys 2026*, pp. 1057–1071. [BibTeX](CITATION.bib)
