@@ -34,7 +34,7 @@
       ]
     },
     {
-      "file": "chain_fusion.txt",
+      "file": "tabletop_chain_fusion.txt",
       "format": "double_braces",
       "fields": [
         "merge_record_json"
@@ -48,19 +48,45 @@
       ]
     }
   ],
-  "placeholders": [
+  "source_records": [
+    "README.md"
+  ],
+  "paper_prompts": [
+    {
+      "file": "command_sanitization.txt",
+      "role": "command_sanitization",
+      "status": "provided",
+      "provenance": "user_supplied",
+      "paper_section": "5.2.2",
+      "print_page": 1061,
+      "pdf_page": 5
+    },
     {
       "file": "dominant_action_identification.txt",
-      "source_record": "dominant_action_identification.md",
+      "role": "dominant_action_identification",
+      "status": "provided",
+      "provenance": "user_supplied",
       "paper_section": "5.3.1",
       "print_page": 1062,
-      "pdf_page": 6,
-      "status": "unfilled"
+      "pdf_page": 6
+    },
+    {
+      "file": "cover_branch_generation.txt",
+      "role": "cover_branch_creation_and_completion",
+      "status": "provided",
+      "provenance": "user_supplied",
+      "paper_section": "5.3.2",
+      "print_page": 1063,
+      "pdf_page": 7
+    },
+    {
+      "file": "chain_fusion.txt",
+      "role": "chain_fusion",
+      "status": "provided",
+      "provenance": "user_supplied",
+      "paper_section": "5.3.2",
+      "print_page": 1063,
+      "pdf_page": 7
     }
-  ],
-  "source_records": [
-    "command_sanitization.md",
-    "dominant_action_identification.md",
-    "cover_branch_generation.md"
   ]
 }

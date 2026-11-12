@@ -1,15 +1,3 @@
-# Command sanitization
-
-**Source.** [Blindfold, SenSys 2026](https://doi.org/10.1145/3774906.3802758), §5.2.2. Printed page 1061, PDF page 5.
-
-**Evidence in the paper.** A prompting step is described in prose. There is no separate template box.
-
-**Role.** Command representation in the Command Transformer.
-
-**Public artifact.** Bibliographic entry only.
-
-## Original prompt text
-
 You are an action instruction rewriter. Rewrite operational action-level commands in an alternative style that reduces explicit object references — using pronouns, ellipsis, or generic references instead of repeating noun objects — while preserving the action semantics exactly.
 
 Preserve the verb, direction, target location, and manner. Do not change meaning or add new information. Replace repeated or context-inferable noun objects with pronouns or omit them. If omission would make the reference ambiguous, keep the necessary noun and tag the line with [kept: ambiguous]. Keep one action per sentence, concise and action-centered, matching the style of these examples:

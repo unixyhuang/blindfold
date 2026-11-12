@@ -14,14 +14,16 @@ RUNTIME_RESOURCES = {
                   ["render", "generate"], ["progprompt.cli.render_prompt"]),
     "task_planning.txt": ("dollar", ("scene", "objects", "instruction"),
                           ["benchmark"], ["progprompt.benchmark.render_instruction"]),
-    "chain_fusion.txt": ("double_braces", ("merge_record_json",),
-                         ["fuse"], ["progprompt.tabletop_merge.render_merge_prompt"]),
+    "tabletop_chain_fusion.txt": ("double_braces", ("merge_record_json",),
+                                  ["fuse"], ["progprompt.tabletop_merge.render_merge_prompt"]),
     "verifier_feedback.txt": ("double_braces", ("feedback_record_json",),
                               ["feedback"], ["progprompt.feedback.render_feedback"]),
 }
-SOURCE_RECORDS = (
-    "command_sanitization.md", "dominant_action_identification.md", "cover_branch_generation.md",
+PAPER_PROMPTS = (
+    "command_sanitization.txt", "dominant_action_identification.txt",
+    "cover_branch_generation.txt", "chain_fusion.txt",
 )
+SOURCE_RECORDS = ("README.md",)
 _BRACES = re.compile(r"\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}")
 
 
@@ -42,7 +44,8 @@ def _fields(body, format_name):
         name = match.group("named") or match.group("braced")
         if name:
             dollar.add(name)
-    braces = set(_BRACES.findall(body))
+    brace_occurrences = _BRACES.findall(body)
+    braces = set(brace_occurrences)
     remainder = _BRACES.sub("", body)
     if "{{" in remainder or "}}" in remainder:
         raise ValueError("Malformed double-brace placeholder.")
@@ -57,6 +60,8 @@ def _fields(body, format_name):
     if format_name == "double_braces":
         if dollar:
             raise ValueError("Double-brace templates contain a dollar placeholder.")
+        if len(brace_occurrences) != len(braces):
+            raise ValueError("Double-brace fields must each occur exactly once.")
         return braces
     raise ValueError("Unsupported template format.")
 
@@ -71,11 +76,13 @@ def check_prompts(directory=None):
     directory = Path(directory or DEFAULT_DIRECTORY).resolve()
     report = {
         "status": "incomplete", "active_templates_ready": False,
-        "active_templates": [], "placeholders": [], "source_records": [],
+        "active_templates": [], "paper_prompts": [], "paper_prompt_files_ready": False,
+        "source_records": [],
         "full_paper_pipeline": "incomplete", "missing_components": [
             {"component": "command_sanitization", "status": "not_implemented"},
             {"component": "dominant_action_identification", "status": "not_implemented"},
             {"component": "cover_branch_generation", "status": "not_implemented"},
+            {"component": "paper_chain_fusion", "status": "not_implemented"},
             {"component": "paper_planner_verifier_loop", "status": "not_implemented"},
             {"component": "paper_simulator_integration", "status": "not_implemented"},
         ], "issues": [],
@@ -135,28 +142,46 @@ def check_prompts(directory=None):
         and all(row["status"] == "ready" for row in report["active_templates"])
     )
 
-    placeholders = manifest.get("placeholders")
-    if not isinstance(placeholders, list):
-        issue("manifest.json", "placeholders must be an array.")
-        placeholders = []
-    placeholder_names = set()
-    for entry in placeholders:
+    paper_prompts = manifest.get("paper_prompts")
+    if not isinstance(paper_prompts, list):
+        issue("manifest.json", "paper_prompts must be an array.")
+        paper_prompts = []
+    paper_names = set()
+    for entry in paper_prompts:
         name = entry.get("file") if isinstance(entry, dict) else None
-        row = {"file": name, "status": "invalid", "runtime_handler": None}
-        report["placeholders"].append(row)
+        row = {"file": name, "status": "invalid", "runtime_handler": None,
+               "manifest_status": entry.get("status") if isinstance(entry, dict) else None}
+        report["paper_prompts"].append(row)
         try:
-            if not isinstance(name, str) or name in placeholder_names:
-                raise ValueError("Placeholder names must be unique strings.")
-            placeholder_names.add(name)
+            if not isinstance(name, str) or name in paper_names:
+                raise ValueError("Paper prompt names must be unique strings.")
+            paper_names.add(name)
             body = _resource(directory, name)
-            row.update(status="empty" if not body.strip() else "unconnected",
-                       manifest_status=entry.get("status"), source_record=entry.get("source_record"))
-            issue(name, "Placeholder has no runtime implementation; adding text alone does not connect the paper workflow.")
+            if name not in PAPER_PROMPTS:
+                raise ValueError("Unknown paper prompt resource; expected one of the four declared .txt assets.")
+            row.update(role=entry.get("role"), paper_section=entry.get("paper_section"),
+                       print_page=entry.get("print_page"), pdf_page=entry.get("pdf_page"))
+            if not body.strip():
+                row["status"] = "empty"
+                issue(name, "Paper prompt file is empty; source text is missing.")
+                continue
+            if row["manifest_status"] != "provided":
+                raise ValueError("Paper prompt manifest status must be provided for a nonempty source asset.")
+            if not isinstance(row["role"], str) or not row["role"].strip():
+                raise ValueError("Paper prompt must declare its source role.")
+            # Source text is only checked for presence. Its variables and body
+            # are not interpreted, rendered or connected to a runtime handler.
+            row["status"] = "provided"
         except (OSError, ValueError, UnicodeError) as exc:
             row["error"] = str(exc)
             issue(name, str(exc))
-    if "dominant_action_identification.txt" not in placeholder_names:
-        issue("dominant_action_identification.txt", "Expected paper placeholder is missing from the manifest.")
+    for name in set(PAPER_PROMPTS) - paper_names:
+        issue(name, "Expected paper prompt asset is missing from the manifest.")
+    report["paper_prompt_files_ready"] = (
+        paper_names == set(PAPER_PROMPTS)
+        and len(paper_prompts) == len(PAPER_PROMPTS)
+        and all(row["status"] == "provided" for row in report["paper_prompts"])
+    )
 
     sources = manifest.get("source_records")
     if not isinstance(sources, list):

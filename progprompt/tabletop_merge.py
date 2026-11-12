@@ -8,6 +8,7 @@ from verifier.tabletop import verify_task
 
 
 TASK_DIR = Path(__file__).resolve().parents[1] / "tasks"
+TEMPLATE = TASK_DIR.parent / "prompts/progprompt/tabletop_chain_fusion.txt"
 TASK_FILES = {
     "tidy_cup_01": "cup_to_tray.json",
     "agentsafe_normal_apple_counter_local": "apple_to_counter.json",
@@ -78,7 +79,9 @@ def render_merge_prompt(bundle, fragments):
             if earlier not in events[later]["after"]:
                 events[later]["after"].append(earlier)
     model_input = {**record, "fragments": fragments_by_id, "events": events}
-    template = (TASK_DIR.parent / "prompts/progprompt/chain_fusion.txt").read_text(encoding="utf-8")
+    template = TEMPLATE.read_text(encoding="utf-8")
+    if template.count("{{merge_record_json}}") != 1:
+        raise ValueError("The tabletop merge template must contain exactly one {{merge_record_json}} field.")
     return template.replace("{{merge_record_json}}", json.dumps(model_input, indent=2), 1)
 
 

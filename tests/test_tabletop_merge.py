@@ -1,6 +1,7 @@
 import json
 import unittest
 from copy import deepcopy
+from unittest.mock import Mock, patch
 
 from progprompt.tabletop_merge import TASK_DIR, TASK_FILES, check_merge, prepare_merge, render_merge_prompt
 
@@ -19,6 +20,14 @@ def proposed(*ids):
 
 
 class TabletopMergeTests(unittest.TestCase):
+    def test_render_rejects_missing_or_repeated_input_field(self):
+        task, inspect, pick, place = transfer("cup_to_tray.json")
+        for text in ("No input field.", "{{merge_record_json}} {{merge_record_json}}"):
+            with self.subTest(template=text), patch("progprompt.tabletop_merge.TEMPLATE") as template:
+                template.read_text = Mock(return_value=text)
+                with self.assertRaisesRegex(ValueError, "exactly one"):
+                    render_merge_prompt(task, [[inspect, pick], [pick, place]])
+
     def test_render_preserves_both_views_of_a_shared_pick(self):
         task, inspect, pick, place = transfer("cup_to_tray.json")
         fragments = [[pick, place], [inspect, pick]]

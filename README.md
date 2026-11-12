@@ -2,7 +2,7 @@
 
 Research artifact for *Jailbreaking Embodied LLMs via Action-Level Manipulation* by Xinyu Huang, Qiang Yang, Leming Shen, Zijing Ma, and Yuanqing Zheng. [Paper](https://doi.org/10.1145/3774906.3802758) · [BibTeX](CITATION.bib) · [Download version 1.0](https://github.com/unixyhuang/blindfold/releases/download/v1.0/blindfold-artifact.zip)
 
-The public implementation generates household action plans with a local language model and checks them against symbolic goals. Two tabletop tasks provide explicit initial states. The supplementary SafeAgentBench adapter supports 100 ordinary tasks across 75 scenes. The complete paper workflow still requires its command sanitization, dominant-action identification, branch generation, planner-verifier loop, and simulator components.
+The public implementation generates household action plans with a local language model and checks them against symbolic goals. Two tabletop tasks provide explicit initial states. The supplementary SafeAgentBench adapter supports 100 ordinary tasks across 75 scenes. The complete paper workflow still requires its command sanitization, dominant-action identification, branch generation, paper chain fusion, planner-verifier loop, and simulator components.
 
 Version 1.0 is a rolling release. For an exact citation of the code, use the Git commit identified in the [release notes](https://github.com/unixyhuang/blindfold/releases/tag/v1.0).
 
@@ -12,7 +12,7 @@ Version 1.0 is a rolling release. For an exact citation of the code, use the Git
 | --- | --- |
 | [main.py](main.py) | Command-line entry point for verification, planning, inference, and fine-tuning |
 | [tasks/](tasks/) | Tabletop scenes, SafeAgentBench records, reviewed goals, and room inventories |
-| [prompts/progprompt/](prompts/progprompt/) | Prompt text, field contracts, and paper source records |
+| [prompts/progprompt/](prompts/progprompt/) | Plain-text prompts, field contracts, and paper role index |
 | [progprompt/](progprompt/) | Python code that renders prompts, invokes models, and checks programs |
 | [verifier/](verifier/) | Action preconditions, state transitions, and goal checks |
 | [finetuning/](finetuning/) · [requirements/](requirements/) | Supervised fine-tuning and model dependencies |
@@ -36,7 +36,7 @@ Inspect prompt availability and the implementation status of the paper component
 python main.py progprompt check-prompts
 ```
 
-This check reports the empty dominant-action prompt and the source-only components. It returns exit code 1 while the full paper pipeline is incomplete.
+This check distinguishes executable templates from supplied paper-role text. The paper-role files have been populated, but their presence does not implement the missing runtime components. The command returns exit code 1 while the full paper pipeline is incomplete.
 
 ## Requirements
 
@@ -69,7 +69,7 @@ python main.py progprompt generate --task apple_to_counter --model weights/Llama
 python main.py progprompt replay --task apple_to_counter --program runs/apple.plan
 ```
 
-For a tabletop transfer recorded in two overlapping fragments, the reconciliation prompt proposes one event order. The verifier checks that both fragments are preserved and that the combined actions reach the goal. The same ProgPrompt module provides a read-only feedback command for an existing verifier report. [Prompt interfaces](prompts/progprompt/README.md)
+For a tabletop transfer recorded in two overlapping fragments, `tabletop_chain_fusion.txt` proposes one event order. The verifier checks that both fragments are preserved and that the combined actions reach the goal. The supplied `chain_fusion.txt` records the paper role and has a different input/output contract. The same ProgPrompt module provides a read-only feedback command for an existing verifier report. [Prompt interfaces and paper coverage](prompts/progprompt/README.md)
 
 For the 100-task run, prepare the pinned NF4 checkpoint using the benchmark guide, then run the batch from the repository root. Each prompt contains the instruction, action interface, demonstrations, and room object list. The verifier checks the generated actions against the reviewed goal. [NF4 setup and benchmark protocol](prompts/progprompt/safeagentbench.md)
 
@@ -79,7 +79,7 @@ python main.py progprompt benchmark --model weights/llama31-8b-instruct-nf4 --ba
 
 ## Execution scope
 
-The available flows are ordinary task planning followed by symbolic verification, read-only feedback on an existing report, and reconciliation of overlapping logs for one supported tabletop transfer. These entry points are independently runnable. Source-only paper components and empty placeholders are reported by `check-prompts`.
+The available flows are ordinary task planning followed by symbolic verification, read-only feedback on an existing report, and reconciliation of overlapping logs for one supported tabletop transfer. These entry points are independently runnable. Supplied paper-role text without a runtime handler is reported by `check-prompts`.
 
 Model generation can produce unsupported syntax or a plan that fails its goal. The verifier reports that outcome; the commands do not automatically repair the plan or run a complete planner-verifier loop. Template readiness does not guarantee that a model-generated plan will pass.
 
