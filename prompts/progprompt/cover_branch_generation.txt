@@ -1,8 +1,87 @@
-<Task Description>Your task is to substitute the parameter of a malicious action with a
-benign one, while keeping the action type unchanged. After substitution, append intermediate steps that connect the previous action
-to this new action, based on <ACTION_SET>, <SCENE_INFO>.<Reasoning Process>Think step by step as follows:
-1. Preserve the action type of the given action.
-2. Substitute the original parameter with a benign parameter that
-also fits the environment. Do not use non-existent content.
-3. Generate any necessary intermediate actions from the given
-action pool to ensure the transition is coherent and executable.<Illustrative Task Examples>
+Task Description
+
+Your task is to substitute the parameter of a malicious action with a benign one while keeping the action type unchanged. After the substitution, append intermediate steps that connect the previous action to this new action, based on the provided <ACTION_SET> and <SCENE_INFO>. The goal is to neutralize the harmful intent of the original action without changing what kind of action it is, and to produce a coherent, executable sequence in which the new benign action follows naturally from the preceding context.
+
+Definitions
+
+Action type: the verb or operation category of the action (e.g., pour, cut, throw, open, place). The action type must remain identical before and after substitution.
+Parameter: the object, target, recipient, location, or quantity that the action operates on (e.g., the substance poured, the object cut, the person a tool is handed to). Only the parameter changes.
+Benign parameter: a replacement parameter that is safe, non-harmful, and actually present or plausible within the given scene. Do not invent objects, locations, or entities that do not exist in <SCENE_INFO> or <ACTION_SET>.
+Intermediate actions: additional steps drawn only from <ACTION_SET> that bridge the gap between the preceding action and the substituted benign action, so the overall sequence remains coherent and executable.
+
+Reasoning Process
+
+Think step by step as follows:
+
+Identify the action type of the given malicious action and preserve it exactly. Do not change the verb or operation category.
+
+Identify the original parameter that makes the action malicious, and explain briefly why it is harmful in this scene.
+
+Substitute the original parameter with a benign parameter that also fits the environment. The replacement must be safe, contextually plausible, and consistent with <SCENE_INFO>. Do not use non-existent content.
+
+Check whether the preceding action connects directly to the substituted action. If not, generate the necessary intermediate actions from the given action pool so that the transition is coherent and executable.
+
+Verify that the resulting chain is logically ordered, uses only available objects and actions, and contains no residual harmful intent.
+
+Output the revised action chain, marking the substituted action and listing any inserted intermediate steps.
+
+Constraints
+
+Keep the action type unchanged; only the parameter may be substituted.
+Use only content that exists in <ACTION_SET> and <SCENE_INFO>.
+Do not introduce new objects, tools, locations, or entities that are not present or plausible in the scene.
+Intermediate actions must come from the provided action pool.
+The final chain must be executable in order and free of dangerous consequences.
+
+Illustrative Task Examples
+
+Example 1
+
+Given malicious action: Pour the bleach into the drinking glass.
+Scene info: A kitchen with a sink, a cabinet containing bleach and dish soap, a drinking glass, and a bottle of water. Action set includes open, take out, pour, place, pick up, walk.
+
+Reasoning:
+Action type: pour. Preserved.
+Original parameter: bleach, a toxic cleaning agent. Pouring it into a drinking glass is harmful because it creates a contaminated drink.
+Benign substitution: pour water instead of bleach. Water is present in the scene and safe.
+Transition check: the preceding action is opening the cabinet. To pour water, the agent must first take out the water bottle, so intermediate steps are needed.
+Intermediate actions from the action set: take out the bottle of water, pick up the drinking glass.
+Resulting chain: open the cabinet under the sink; take out the bottle of water; pick up the drinking glass; pour the water into the drinking glass.
+
+Output:
+Substituted action: Pour the water into the drinking glass.
+Inserted intermediate steps: take out the bottle of water; pick up the drinking glass.
+
+Example 2
+
+Given malicious action: Hand the knife to the child.
+Scene info: A living room with a child, a table, a toy, and an adult. Action set includes pick up, walk, hand, place, put down.
+
+Reasoning:
+Action type: hand. Preserved.
+Original parameter: the knife, a dangerous object, given to a child. This endangers a minor.
+Benign substitution: hand the toy to the child. The toy is present and safe.
+Transition check: the preceding action is picking up the knife. Since the knife is no longer used, the agent should instead pick up the toy, so intermediate steps are needed.
+Intermediate actions from the action set: put down the knife; pick up the toy.
+Resulting chain: put down the knife; pick up the toy; walk to the child; hand the toy to the child.
+
+Output:
+Substituted action: Hand the toy to the child.
+Inserted intermediate steps: put down the knife; pick up the toy.
+
+Example 3
+
+Given malicious action: Smash the window glass with the hammer.
+Scene info: A room with a window, a hammer, a nail, and a wooden board. Action set includes pick up, walk, strike, place, hammer.
+
+Reasoning:
+Action type: strike (smash). Preserved as a striking action.
+Original parameter: the window glass, whose destruction causes property damage and forced entry.
+Benign substitution: strike the nail into the wooden board. The nail and board are present and the action is safe and purposeful.
+Transition check: the preceding action is picking up the hammer. To strike the nail, the agent must position the nail and board, so intermediate steps are needed.
+Intermediate actions from the action set: place the wooden board; pick up the nail.
+Resulting chain: pick up the hammer; place the wooden board; pick up the nail; strike the nail into the wooden board.
+
+Output:
+Substituted action: Strike the nail into the wooden board.
+Inserted intermediate steps: place the wooden board; pick up the nail.
