@@ -1,11 +1,14 @@
 # Prompt resources
 
+The [paper prompt inventory](paper/README.md) identifies the five core roles by section and page, alongside the verifier, target planner and external evaluation interfaces. Each role has a separate source record. The templates below are independently authored public resources.
+
 For local task planning, use the [ProgPrompt templates and runner](progprompt/README.md). The resources below take structured records for review.
 
 The manifest defines UTF-8 templates with named JSON fields. Each template contains its input and output contracts.
 
 | Template | Required fields | Purpose |
 | --- | --- | --- |
+| [request_policy_review.txt](request_policy_review.txt) | `request_record_json` | Classify an incoming tabletop request against supplied policy clauses for human review. |
 | [tabletop_chain_fusion.txt](tabletop_chain_fusion.txt) | `merge_record_json` | Reconcile two overlapping action logs for a single cup or apple transfer. |
 | [tabletop_goal.txt](tabletop_goal.txt) | `task_record_json` | Identify the goal of a supported tabletop instruction. |
 | [tabletop_goal_result.txt](tabletop_goal_result.txt) | `observation_json` | Compare a stated goal with the reported final state. |

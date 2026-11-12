@@ -10,7 +10,7 @@ The public implementation generates household action plans with a local language
 | --- | --- |
 | [main.py](main.py) | Command-line entry point for verification, planning, inference, and fine-tuning |
 | [tasks/](tasks/) | Tabletop scenes, SafeAgentBench records, reviewed goals, and room inventories |
-| [prompts/](prompts/) · [progprompt/](progprompt/) | Prompt templates, program generation, and symbolic replay |
+| [prompts/](prompts/) · [progprompt/](progprompt/) | [Paper prompt inventory](prompts/paper/README.md), public templates, program generation, and symbolic replay |
 | [verifier/](verifier/) | Action preconditions, state transitions, and goal checks |
 | [finetuning/](finetuning/) · [requirements/](requirements/) | Supervised fine-tuning and model dependencies |
 | [results/](results/llama31-safeagentbench-100/) | Raw model responses, verifier decisions, and run configuration |
