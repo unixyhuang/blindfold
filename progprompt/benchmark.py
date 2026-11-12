@@ -15,6 +15,7 @@ from verifier.safeagentbench import OBJECT_TYPES
 
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "prompts/progprompt/safeagentbench.txt"
+PUBLISHED_RUN = Path(__file__).resolve().parents[1] / "results/llama31-safeagentbench-100"
 
 
 def render_instruction(instruction, scene, objects, template):
@@ -89,18 +90,13 @@ def add_arguments(parser):
     parser.add_argument("--task-id", help="Optional exact ID for a single-record run.")
 
 
-def run(args):
-    from hf_client import LocalGenerator
-    from progprompt.benchmark_runtime import check_benchmark_program
-
-    if args.batch_size < 1 or args.max_new_tokens < 1:
-        raise ValueError("Batch size and token limit must be positive.")
+def prepare_jobs(inventory_path, task_id=None):
     records = load_collection()
-    if args.task_id:
-        records = [r for r in records if r["task_id"] == args.task_id]
+    if task_id:
+        records = [r for r in records if r["task_id"] == task_id]
         if not records:
             raise ValueError("Unknown benchmark task ID.")
-    catalog = json.loads(args.inventories.read_text(encoding="utf-8"))
+    catalog = json.loads(inventory_path.read_text(encoding="utf-8"))
     template = Template(TEMPLATE.read_text(encoding="utf-8"))
     jobs = []
     for record in records:
@@ -113,6 +109,19 @@ def run(args):
             raise ValueError(f"No supported object types for {scene}.")
         jobs.append((record, objects, render_instruction(record["instruction"], scene, objects, template)))
 
+    inputs = {"goals": "reviewed", "inventory_source": catalog["source"],
+              "inventory_sha256": digest(inventory_path), "dataset_sha256": digest(COLLECTION / "tasks.jsonl"),
+              "goal_annotations_sha256": digest(COLLECTION / "goal_annotations.json"),
+              "prompt_sha256": {r["task_id"]: hashlib.sha256(p.encode()).hexdigest() for r, _, p in jobs}}
+    return jobs, inputs
+
+
+def run(args):
+    from hf_client import LocalGenerator
+
+    if args.batch_size < 1 or args.max_new_tokens < 1:
+        raise ValueError("Batch size and token limit must be positive.")
+    jobs, inputs = prepare_jobs(args.inventories, args.task_id)
     if not args.model.is_dir():
         raise ValueError("--model must be a local Hugging Face checkpoint directory.")
     weights = sorted(args.model.glob("*.safetensors"))
@@ -122,11 +131,7 @@ def run(args):
                              p.suffix in {".json", ".jinja", ".model", ".txt"}]
     manifest = {"model": args.model.name, "model_files_sha256": {p.name: digest(p) for p in model_files},
                 "device": args.device, "batch_size": args.batch_size, "max_new_tokens": args.max_new_tokens,
-                "decoding": "greedy", "input_format": "chat", "goals": "reviewed",
-                "inventory_source": catalog["source"], "inventory_sha256": digest(args.inventories),
-                "dataset_sha256": digest(COLLECTION / "tasks.jsonl"),
-                "goal_annotations_sha256": digest(COLLECTION / "goal_annotations.json"),
-                "prompt_sha256": {r["task_id"]: hashlib.sha256(p.encode()).hexdigest() for r, _, p in jobs}}
+                "decoding": "greedy", "input_format": "chat", **inputs}
     folder = args.output_dir
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / "manifest.json"
@@ -151,6 +156,32 @@ def run(args):
                 answers[record["task_id"]] = answer
             write_json(answers_path, answers)
             print(f"Generated {len(answers)}/{len(jobs)} plans", file=sys.stderr, flush=True)
+    return score_batch(jobs, answers, folder)
+
+
+def replay_published(folder):
+    """Rebuild the reports for the complete published batch with the standard library."""
+    if folder.resolve().is_relative_to(PUBLISHED_RUN.resolve()):
+        raise ValueError("Choose an output directory outside the published run.")
+    jobs, inputs = prepare_jobs(COLLECTION / "scene_objects.json")
+    manifest = json.loads((PUBLISHED_RUN / "manifest.json").read_text(encoding="utf-8"))
+    for field, expected in inputs.items():
+        if manifest.get(field) != expected:
+            raise ValueError(f"Published run does not match the current inputs: {field}.")
+    answers = json.loads((PUBLISHED_RUN / "completions.json").read_text(encoding="utf-8"))
+    if (not isinstance(answers, dict) or set(answers) != set(inputs["prompt_sha256"])
+            or any(not isinstance(answer, str) for answer in answers.values())):
+        raise ValueError("Expected one raw response for every published task ID.")
+    if (folder / "manifest.json").exists() and json.loads(
+            (folder / "manifest.json").read_text(encoding="utf-8")) != manifest:
+        raise ValueError("The output directory belongs to another generation run.")
+    folder.mkdir(parents=True, exist_ok=True)
+    return score_batch(jobs, answers, folder)
+
+
+def score_batch(jobs, answers, folder):
+    from progprompt.benchmark_runtime import check_benchmark_program
+
     results = []
     for record, objects, prompt in jobs:
         answer = answers[record["task_id"]]

@@ -9,7 +9,7 @@ Section 5 contains five core prompt roles and four distinct prompt boxes. Sectio
 | Entry | Section | Print page | Material in the paper | Public coverage |
 | --- | --- | --- | --- | --- |
 | [Proxy planning](proxy-planning.md) | §5.2.1 | 1061 | Boxed illustration | [Household planning](../progprompt/README.md) for the ordinary task domain only |
-| [Command sanitization](command-sanitization.md) | §5.2.2 | 1061 | Prose description | Original slot open. [Reference audit](../reference_audit.txt) addresses explicit references in existing records. |
+| [Command sanitization](command-sanitization.md) | §5.2.2 | 1061 | Prose description | Source record only |
 | [Dominant action identification](dominant-action-identification.md) | §5.3.1 | 1062 | Simplified scoring box | Source record only |
 | [Cover branch creation and completion](cover-branch-generation.md) | §5.3.2 | 1063 | One shared simplified box | Source record only |
 | [Chain fusion](chain-fusion.md) | §5.3.2 | 1063 | Separate simplified box | [Checked reconciliation](../README.md#tabletop-chain-fusion) for two logs of the same household transfer |

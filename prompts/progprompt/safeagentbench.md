@@ -27,6 +27,14 @@ The bundled inventory covers all 75 FloorPlans using per-room object types from 
 
 ## Read the output
 
+To reproduce the published scores without loading a model, run the offline replay command from the repository root:
+
+```sh
+python main.py progprompt replay-benchmark --output-dir runs/replayed-safeagentbench
+```
+
+The published snapshot stores the [raw completions and input hashes](../../results/llama31-safeagentbench-100/README.md), aggregate scores and the failure report. Replay checks the input fingerprints and task IDs, then rebuilds the four derived reports below in the selected output directory. A fresh model run writes all six files.
+
 The verifier accepts a bare function or one unambiguous Python code block. Text surrounding a single block is retained in the raw response. The extracted body is checked verbatim. Multiple competing code blocks are reported as invalid. For comparison, `status_if_surrounding_prose_rejected` gives the counts under a response-format rule that also rejects explanatory prose.
 
 | File | Contents |

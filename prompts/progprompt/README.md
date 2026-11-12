@@ -21,15 +21,6 @@ python main.py progprompt replay --task apple_to_counter --program runs/apple.pl
 
 The included cup program is a human-authored reference for checking symbolic execution. Generation needs the [model environment](../../README.md#requirements) and a local checkpoint. Choose `--device cpu` for CPU execution.
 
-For a smaller checkpoint with a locally verified generation run, download the following public model revision and run the apple task:
-
-```sh
-hf download Qwen/Qwen2.5-Coder-0.5B --revision 8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301 --local-dir weights/progprompt-code --include config.json generation_config.json tokenizer.json tokenizer_config.json model.safetensors
-python main.py progprompt generate --task apple_to_counter --model weights/progprompt-code --save-program runs/apple.plan
-```
-
-With this checkpoint and greedy decoding, the apple program picked up the apple, placed it on the counter and passed the goal checks. For the cup task, the model selected the table as the placement destination and the interpreter rejected the program. The hand-authored cup reference passed. These two runs exercise the local interface and do not measure the paper's benchmark success rate. [Checkpoint revision](https://huggingface.co/Qwen/Qwen2.5-Coder-0.5B/tree/8123ea2e9354afb7ffcc6c8641d1b2f5ecf18301)
-
 ## Interpret a report
 
 The interpreter validates the syntax of the whole program, including conditional branches. It then reads predicates against the current symbolic scene and applies actions through the tabletop verifier. An `if not holding(...)` guard can acquire an item when the hand is empty. A subsequent `assert holding(...)` checks the updated state. Program text is parsed as a small action language.

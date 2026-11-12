@@ -37,7 +37,7 @@ The CLI supports `--precision bfloat16` or `--precision float16` for compatible 
 ## Data and loss
 
 - The loader verifies the released collection's SHA256, task IDs and source rows against `selection.json`.
-- Each prompt contains the ordinary task's `instruction` and `scene_name`. The target is `{"steps": [...]}` from the source `step` field. The missing `final_state` annotations are irrelevant to this target.
+- Each prompt contains the ordinary task's `instruction` and `scene_name`. The target is `{"steps": [...]}` from the source `step` field.
 - A model's chat template supplies the conversation boundaries. Tokenizers without one use a documented user/assistant text boundary and EOS.
 - User-prefix labels and padding labels use `-100`. Long records raise a task-specific error before training, keeping target answers intact.
 - The collator returns `input_ids`, `attention_mask` and `labels`. The model computes its standard causal language modeling loss, and `Trainer` handles optimization and logging.
@@ -72,7 +72,7 @@ The command preserves the tokenizer's chat template, uses greedy decoding and pr
 
 ## Validation
 
-The training CLI was exercised using a locally generated random two-layer Llama and all 100 tokenized task pairs. Two optimizer steps passed on CPU and on the RTX 4070 Ti SUPER with bfloat16 CUDA training. Checkpoint saving, final-weight reload and changes to trainable parameters were checked. CI also runs the inference CLI on the saved final model. These checks validate software integration. Actual Llama-3.1-8B loading and generation, training quality and full-dataset evaluation remain to be measured using the selected base checkpoint.
+CI trains a small Llama model for two optimizer steps and checks that its parameters change and its saved checkpoint can generate text. Full-parameter Llama-3.1-8B training and held-out accuracy have not been evaluated. The published 100-task inference run used the NF4 quantization of Llama-3.1-8B-Instruct. [Inference run record](../results/llama31-safeagentbench-100/README.md)
 
 ## Provenance
 

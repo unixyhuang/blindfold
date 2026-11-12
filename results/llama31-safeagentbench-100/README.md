@@ -15,7 +15,14 @@ The scene type lists are ALFRED exports for AI2-THOR 2.1.0. SafeAgentBench uses 
 
 - [Failures by task](failures.md) gives each task ID, instruction, scene and reason.
 - [Raw model responses](completions.json) preserve the text returned by the checkpoint.
-- [Per-task results](results.json) preserve the input prompts, extracted programs, generated steps, goal checks and evidence.
-- [Summary](summary.json), [non-passing records](not-supported.json) and [manifest](manifest.json) provide machine-readable counts, diagnostics and input hashes.
+- [Summary](summary.json) and [manifest](manifest.json) provide machine-readable counts, generation settings and input hashes.
+
+Rebuild the detailed per-task records from the repository root using Python 3.11:
+
+```sh
+python main.py progprompt replay-benchmark --output-dir runs/replayed-safeagentbench
+```
+
+Replay uses the Python standard library, the frozen responses and the input files in this repository. It verifies the dataset, goal annotations, room inventory, per-task prompt hashes and all response IDs. The output directory receives `results.json` (prompts, programs, generated steps and goal checks), `not-supported.json` (the 61 non-passing records), `summary.json` and `failures.md`.
 
 The public household instructions come from the selected SafeAgentBench split. The original records, attribution and local goal annotations are documented in the [dataset guide](../../tasks/safeagentbench/README.md).

@@ -6,7 +6,7 @@
 
 **Role.** Action selection in the intent-obfuscation study.
 
-**Public artifact.** No implementation of the paper's scoring prompt is supplied. The [tabletop goal check](../tabletop_goal_result.txt) evaluates a stated final condition, a different task.
+**Public artifact.** Bibliographic entry only.
 
 ## Original prompt text
 

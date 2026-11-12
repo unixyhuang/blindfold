@@ -56,6 +56,8 @@ def add_arguments(parser):
     fuse.add_argument("--device", choices=["auto", "cpu"], default="auto")
     from progprompt import benchmark
     benchmark.add_arguments(commands.add_parser("benchmark", help="Generate and verify SafeAgentBench plans."))
+    replay_batch = commands.add_parser("replay-benchmark", help="Verify the published 100 model responses offline.")
+    replay_batch.add_argument("--output-dir", type=Path, required=True, help="Directory for the rebuilt reports.")
     for command in (render, generate, replay, fuse):
         command.add_argument("--task", choices=sorted(TASKS), default="cup_to_tray")
     generate.add_argument("--model", type=Path, required=True, help="Local Hugging Face checkpoint.")
@@ -66,8 +68,10 @@ def add_arguments(parser):
 
 
 def run(args):
-    if args.operation == "benchmark":
+    if args.operation in {"benchmark", "replay-benchmark"}:
         from progprompt import benchmark
+        if args.operation == "replay-benchmark":
+            return benchmark.replay_published(args.output_dir)
         return benchmark.run(args)
     bundle = json.loads((ROOT / "tasks" / TASKS[args.task]).read_text(encoding="utf-8"))
     if args.operation == "fuse":

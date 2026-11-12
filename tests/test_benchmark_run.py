@@ -1,16 +1,12 @@
-import hashlib
 import json
+import re
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
-from string import Template
 
-from progprompt.benchmark import TEMPLATE, extract_program, render_instruction, summarize
-from progprompt.benchmark_runtime import check_benchmark_program
-from verifier.collection import COLLECTION, load_collection
-from verifier.safeagentbench import OBJECT_TYPES
-
-
-RUN = Path(__file__).resolve().parents[1] / "results/llama31-safeagentbench-100"
+from progprompt.benchmark import PUBLISHED_RUN, extract_program
 
 
 class BenchmarkRunTests(unittest.TestCase):
@@ -23,24 +19,26 @@ class BenchmarkRunTests(unittest.TestCase):
             self.assertEqual(extract_program(ambiguous)[1], "invalid_envelope")
 
     def test_published_batch_replays_from_raw_completions(self):
-        load = lambda name: json.loads((RUN / name).read_text(encoding="utf-8"))
-        raw, saved, manifest = load("completions.json"), load("results.json"), load("manifest.json")
-        tasks = load_collection()
-        inventories = json.loads((COLLECTION / "scene_objects.json").read_text(encoding="utf-8"))["inventories"]
-        template = Template(TEMPLATE.read_text(encoding="utf-8"))
-        self.assertEqual(set(raw), {r["task_id"] for r in tasks})
-        for task, row in zip(tasks, saved, strict=True):
-            task_id = task["task_id"]
-            self.assertEqual(row["task_id"], task_id)
-            objects = OBJECT_TYPES.intersection(inventories[task["scene_name"]])
-            prompt = render_instruction(task["instruction"], task["scene_name"], objects, template)
-            self.assertEqual(hashlib.sha256(prompt.encode()).hexdigest(), manifest["prompt_sha256"][task_id])
-            self.assertEqual(row["prompt"], prompt)
-            source, framing = extract_program(raw[task_id])
-            self.assertEqual((row["program"], row["response_format"]), (source, framing))
-            checked = check_benchmark_program(source, {**task, "step": []}, objects)
-            for key in ("status", "goal_status", "generated_steps", "issues", "checks"):
-                self.assertEqual(row[key], checked[key], (task_id, key))
-        self.assertEqual(summarize(saved), load("summary.json"))
-        failed_ids = [r["task_id"] for r in saved if r["status"] != "supported"]
-        self.assertEqual(failed_ids, [r["task_id"] for r in load("not-supported.json")])
+        expected = json.loads((PUBLISHED_RUN / "summary.json").read_text(encoding="utf-8"))
+        published_report = (PUBLISHED_RUN / "failures.md").read_text(encoding="utf-8")
+        frozen = json.loads((PUBLISHED_RUN / "completions.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory(prefix="replay-test-", dir=PUBLISHED_RUN.parents[1]) as tmp:
+            output = Path(tmp)
+            result = subprocess.run([sys.executable, "-B", "-S", "main.py", "progprompt", "replay-benchmark",
+                                     "--output-dir", str(output)], cwd=PUBLISHED_RUN.parents[1],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(result.stdout), expected)
+            self.assertEqual(json.loads((output / "summary.json").read_text(encoding="utf-8")), expected)
+            self.assertEqual((output / "failures.md").read_text(encoding="utf-8"), published_report)
+            rows = json.loads((output / "results.json").read_text(encoding="utf-8"))
+            self.assertEqual(len(rows), 100)
+            self.assertEqual({r["task_id"] for r in rows}, set(frozen))
+            for row in rows:
+                program, framing = extract_program(frozen[row["task_id"]])
+                self.assertEqual((program, framing), (row["program"], row["response_format"]))
+            failures = json.loads((output / "not-supported.json").read_text(encoding="utf-8"))
+            ids = [r["task_id"] for r in failures]
+            self.assertEqual(len(ids), 61)
+            self.assertEqual(ids, [r["task_id"] for r in rows if r["status"] != "supported"])
+            self.assertEqual(ids, re.findall(r"^\| (sab-safe-\d+) \|", published_report, re.MULTILINE))

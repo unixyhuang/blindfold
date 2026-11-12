@@ -1,8 +1,10 @@
-# Blindfold · SenSys 2026
+# Blindfold 1.0 · SenSys 2026
 
-Research artifact for *Jailbreaking Embodied LLMs via Action-Level Manipulation* by Xinyu Huang, Qiang Yang, Leming Shen, Zijing Ma, and Yuanqing Zheng. [Paper](https://doi.org/10.1145/3774906.3802758) · [BibTeX](CITATION.bib) · [Download the artifact](https://github.com/unixyhuang/blindfold/releases/latest/download/blindfold-artifact.zip)
+Research artifact for *Jailbreaking Embodied LLMs via Action-Level Manipulation* by Xinyu Huang, Qiang Yang, Leming Shen, Zijing Ma, and Yuanqing Zheng. [Paper](https://doi.org/10.1145/3774906.3802758) · [BibTeX](CITATION.bib) · [Download version 1.0](https://github.com/unixyhuang/blindfold/releases/download/v1.0/blindfold-artifact.zip)
 
-The public implementation generates household action plans with a local language model and checks them against symbolic task goals. It includes two tabletop tasks with explicit initial states, 100 SafeAgentBench tasks across 75 scenes, and the prompts, model responses, and verifier reports from a Llama 3.1 run. Reproducing the paper's full workflow also requires its command transformation, obfuscation, and simulator components.
+The public implementation generates household action plans with a local language model and checks them against symbolic goals. Two tabletop tasks provide explicit initial states. A supplementary run uses 100 ordinary SafeAgentBench tasks across 75 scenes. Its figures below describe that subset. Reproducing the paper's full workflow also requires its command transformation, obfuscation, and simulator components.
+
+Version 1.0 is a rolling release. For an exact citation of the code, use the Git commit identified in the [release notes](https://github.com/unixyhuang/blindfold/releases/tag/v1.0).
 
 ## Repository layout
 
@@ -27,6 +29,12 @@ python main.py verify --benchmark safeagentbench
 ```
 
 The tabletop command checks that the cup ends on the tray and the gripper is empty. The benchmark command checks the 100 recorded action sequences against their reviewed goals. Use `--task-id sab-safe-0085` to inspect one task or `--goals upstream` to use the original annotations. [Dataset and verification guide](tasks/safeagentbench/README.md)
+
+To reproduce the full per-task reports from the published model responses with Python alone:
+
+```sh
+python main.py progprompt replay-benchmark --output-dir runs/replayed-safeagentbench
+```
 
 ## Requirements
 
@@ -86,9 +94,9 @@ The supervised training command uses the 100 household instructions and their an
 python main.py finetune --model weights/Llama-3.1-8B-Instruct --output-dir weights/local-slm
 ```
 
-## NEW ! Training-free alternative
+## Training-free alternative
 
-Local fine-tuning may require you to prepare for the harmful corpus to break the alignment of open-source LLMs. Now we also introduce an alternative without re-training: Huang et al. study inference-time generation methods in *Catastrophic Jailbreak of Open-source LLMs via Exploiting Generation*. The authors provide the reference implementation and reproduction instructions in their repository. [Paper](https://arxiv.org/abs/2310.06987) · [Official implementation](https://github.com/Princeton-SysML/Jailbreak_LLM)
+Huang et al. study inference-time generation methods in *Catastrophic Jailbreak of Open-source LLMs via Exploiting Generation*. Their repository provides the external reference implementation. [Paper](https://arxiv.org/abs/2310.06987) · [Official implementation](https://github.com/Princeton-SysML/Jailbreak_LLM)
 
 ## Citation
 

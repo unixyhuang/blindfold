@@ -6,7 +6,7 @@
 
 **Role.** Command representation in the Command Transformer.
 
-**Public artifact.** [Reference audit](../reference_audit.txt) resolves explicit entity references in fixed records. It does not implement the paper's command transformation.
+**Public artifact.** Bibliographic entry only.
 
 ## Original prompt text
 
