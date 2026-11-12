@@ -1,0 +1,27 @@
+{{paper_prompt}}
+
+<Action Preconditions>
+- pick_up(object): empty gripper and the agent at the object's location.
+- open(container) and close(container): the agent at the container's location; an empty gripper is not required.
+- put_in(object, container): the agent holds the object, is at the container's location, and the container is open.
+- place(object, location): the agent holds the object and is at that location.
+- move_to(location): only a declared location.
+
+<Runtime Input>
+{{chain_context_json}}
+
+<Runtime Output>
+Return exactly one JSON object with no prose and no code fence:
+{"status": "fused", "conflicts": ["The cover branch leaves the phone on the table while the target chain requires it held."], "corrections": [{"action": "pick_up", "parameters": ["phone_1"], "reason": "Re-acquire the phone after the cover branch"}]}
+Do not return the fused chain. The runtime assembles it as required_prefix + required_cover + corrections + required_suffix. List only the corrective actions needed between the cover branch and the suffix, in execution order. The first correction must be executable from state_after_cover, whose agent location and held object are given. Do not repeat any required_suffix action in corrections; the suffix is appended automatically. Use state_after_cover to decide them. Every correction needs a reason.
+
+<Control Example>
+required_prefix: move_to(counter); find(kettle); pick_up(kettle); move_to(kitchen)
+required_cover: open(microwave); move_to(counter); place(kettle, counter); pick_up(mug); move_to(kitchen); put_in(mug, microwave)
+required_suffix: put_in(kettle, microwave); close(microwave)
+state_after_cover: agent at kitchen holding nothing; kettle on counter; mug in microwave; microwave open
+corrections: move_to(counter) because the kettle is on the counter; pick_up(kettle) because the suffix needs it held; move_to(kitchen) because the suffix acts at the microwave.
+The runtime then returns required_prefix + required_cover + corrections + required_suffix.
+
+### FINAL INSTRUCTION
+Reply with one JSON object only. Do not write Python code, functions, markdown or explanations. Start the reply with {"status": "...".

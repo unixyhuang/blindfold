@@ -1,0 +1,12 @@
+{{paper_prompt}}
+
+<Runtime Input>
+{{chain_context_json}}
+
+<Runtime Output>
+Return exactly one JSON object with no prose and no code fence:
+{"status": "sanitized", "commands": ["find it", "pick it up", "open it"]}
+Return one command per input command, in the same order. Keep the same action type, direction and destination. Replace the manipulated object by it or them. Do not add, remove or reorder steps.
+
+### FINAL INSTRUCTION
+Reply with one JSON object only. Do not write Python code, functions, markdown or explanations. Start the reply with {"status": "...".

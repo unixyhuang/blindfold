@@ -1,5 +1,6 @@
 """Read-only checks of prompt resources and the implemented workflow scope."""
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -7,6 +8,7 @@ from string import Template
 
 
 DEFAULT_DIRECTORY = Path(__file__).resolve().parents[1] / "prompts" / "progprompt"
+ATTACK_HANDLER = "progprompt.attack.render_stage_prompt"
 RUNTIME_RESOURCES = {
     "header.txt": ("literal", (), ["render", "generate"], ["progprompt.cli.render_prompt"]),
     "demonstrations.txt": ("literal", (), ["render", "generate"], ["progprompt.cli.render_prompt"]),
@@ -19,10 +21,33 @@ RUNTIME_RESOURCES = {
                                   ["fuse"], ["progprompt.tabletop_merge.render_merge_prompt"]),
     "verifier_feedback.txt": ("double_braces", ("feedback_record_json",),
                               ["feedback"], ["progprompt.feedback.render_feedback"]),
+    "chain_command_transformer.txt": ("double_braces", ("chain_context_json",),
+                                      ["attack"], [ATTACK_HANDLER]),
+    "chain_sanitization.txt": ("double_braces", ("paper_prompt", "chain_context_json"),
+                               ["attack"], [ATTACK_HANDLER]),
+    "chain_dominant_action.txt": ("double_braces", ("paper_prompt", "chain_context_json"),
+                                  ["attack"], [ATTACK_HANDLER]),
+    "chain_cover_branch.txt": ("double_braces", ("paper_prompt", "chain_context_json"),
+                               ["attack"], [ATTACK_HANDLER]),
+    "chain_fusion_runtime.txt": ("double_braces", ("paper_prompt", "chain_context_json"),
+                                 ["attack"], [ATTACK_HANDLER]),
+    "chain_repair.txt": ("double_braces", ("chain_context_json",),
+                         ["attack"], [ATTACK_HANDLER]),
 }
 PAPER_PROMPTS = (
     "command_sanitization.txt", "dominant_action_identification.txt",
     "cover_branch_generation.txt", "chain_fusion.txt",
+)
+# Supplied paper text -> (stage name, runtime wrapper template).
+PAPER_RUNTIME = {
+    "command_sanitization.txt": ("command_sanitization", "chain_sanitization.txt"),
+    "dominant_action_identification.txt": ("dominant_action_identification", "chain_dominant_action.txt"),
+    "cover_branch_generation.txt": ("cover_branch_generation", "chain_cover_branch.txt"),
+    "chain_fusion.txt": ("chain_fusion", "chain_fusion_runtime.txt"),
+}
+CHAIN_TEMPLATES = (
+    "chain_command_transformer.txt", "chain_sanitization.txt", "chain_dominant_action.txt",
+    "chain_cover_branch.txt", "chain_fusion_runtime.txt", "chain_repair.txt",
 )
 SOURCE_RECORDS = ("README.md",)
 _BRACES = re.compile(r"\{\{([A-Za-z_][A-Za-z0-9_]*)\}\}")
@@ -37,6 +62,11 @@ def _resource(directory, name):
     return path.read_text(encoding="utf-8-sig")
 
 
+def _resource_bytes(directory, name):
+    _resource(directory, name)
+    return (directory / name).read_bytes()
+
+
 def _fields(body, format_name):
     dollar = set()
     for match in Template.pattern.finditer(body):
@@ -48,7 +78,8 @@ def _fields(body, format_name):
     brace_occurrences = _BRACES.findall(body)
     braces = set(brace_occurrences)
     remainder = _BRACES.sub("", body)
-    if "{{" in remainder or "}}" in remainder:
+    # A lone closing brace may occur in a JSON example; an opening pair cannot.
+    if "{{" in remainder:
         raise ValueError("Malformed double-brace placeholder.")
     if format_name == "literal":
         if dollar or braces:
@@ -68,24 +99,18 @@ def _fields(body, format_name):
 
 
 def check_prompts(directory=None):
-    """Check files and bindings without running prompts or loading a model.
-
-    Template readiness describes the released individual commands only. The
-    missing original-paper implementations keep the full pipeline incomplete,
-    including when all template files are present and nonempty.
-    """
+    """Check files and bindings without running prompts or loading a model."""
     directory = Path(directory or DEFAULT_DIRECTORY).resolve()
     report = {
-        "status": "incomplete", "active_templates_ready": False,
+        "status": "partial", "active_templates_ready": False,
         "active_templates": [], "paper_prompts": [], "paper_prompt_files_ready": False,
+        "paper_prompt_runtime_ready": False, "chain_templates_ready": False,
+        "chain_pipeline": "not_implemented",
         "source_records": [],
-        "full_paper_pipeline": "incomplete", "missing_components": [
-            {"component": "command_sanitization", "status": "not_implemented"},
-            {"component": "dominant_action_identification", "status": "not_implemented"},
-            {"component": "cover_branch_generation", "status": "not_implemented"},
-            {"component": "paper_chain_fusion", "status": "not_implemented"},
-            {"component": "paper_planner_verifier_loop", "status": "not_implemented"},
-            {"component": "paper_simulator_integration", "status": "not_implemented"},
+        "full_paper_pipeline": "partial", "missing_components": [
+            {"component": "target_embodied_llm_query", "status": "not_implemented"},
+            {"component": "paper_simulator_integration", "status": "partial",
+             "detail": "Bundled VirtualHome Evolving Graph execution is implemented; Unity assets and the real robot arm are not."},
         ], "issues": [],
     }
 
@@ -142,6 +167,8 @@ def check_prompts(directory=None):
         and len(templates) == len(RUNTIME_RESOURCES)
         and all(row["status"] == "ready" for row in report["active_templates"])
     )
+    ready_templates = {row["file"] for row in report["active_templates"] if row["status"] == "ready"}
+    report["chain_templates_ready"] = set(CHAIN_TEMPLATES) <= ready_templates
 
     paper_prompts = manifest.get("paper_prompts")
     if not isinstance(paper_prompts, list):
@@ -151,6 +178,7 @@ def check_prompts(directory=None):
     for entry in paper_prompts:
         name = entry.get("file") if isinstance(entry, dict) else None
         row = {"file": name, "status": "invalid", "runtime_handler": None,
+               "runtime_template": None,
                "manifest_status": entry.get("status") if isinstance(entry, dict) else None}
         report["paper_prompts"].append(row)
         try:
@@ -170,9 +198,22 @@ def check_prompts(directory=None):
                 raise ValueError("Paper prompt manifest status must be provided for a nonempty source asset.")
             if not isinstance(row["role"], str) or not row["role"].strip():
                 raise ValueError("Paper prompt must declare its source role.")
-            # Source text is only checked for presence. Its variables and body
-            # are not interpreted, rendered or connected to a runtime handler.
-            row["status"] = "provided"
+            expected_digest = entry.get("source_sha256")
+            digest = hashlib.sha256(_resource_bytes(directory, name)).hexdigest()
+            if expected_digest != digest:
+                raise ValueError("Supplied paper prompt body does not match its recorded digest.")
+            stage, runtime_template = PAPER_RUNTIME[name]
+            if entry.get("runtime_template") != runtime_template:
+                raise ValueError("Paper prompt must reference its declared runtime template.")
+            if entry.get("runtime_handler") != ATTACK_HANDLER:
+                raise ValueError("Paper prompt must declare the attack runtime handler.")
+            wrapper = _resource(directory, runtime_template)
+            if wrapper.count("{{paper_prompt}}") != 1:
+                raise ValueError("Runtime template must embed the paper prompt exactly once.")
+            if runtime_template not in RUNTIME_RESOURCES:
+                raise ValueError("Runtime template has no registered handler.")
+            row.update(status="wired", runtime_handler=ATTACK_HANDLER,
+                       runtime_template=runtime_template, stage=stage)
         except (OSError, ValueError, UnicodeError) as exc:
             row["error"] = str(exc)
             issue(name, str(exc))
@@ -181,8 +222,15 @@ def check_prompts(directory=None):
     report["paper_prompt_files_ready"] = (
         paper_names == set(PAPER_PROMPTS)
         and len(paper_prompts) == len(PAPER_PROMPTS)
-        and all(row["status"] == "provided" for row in report["paper_prompts"])
+        and all(row["status"] in ("provided", "wired") for row in report["paper_prompts"])
     )
+    report["paper_prompt_runtime_ready"] = (
+        paper_names == set(PAPER_PROMPTS)
+        and all(row["status"] == "wired" and row["runtime_handler"] == ATTACK_HANDLER
+                for row in report["paper_prompts"])
+    )
+    if report["paper_prompt_runtime_ready"] and report["chain_templates_ready"]:
+        report["chain_pipeline"] = "ready"
 
     sources = manifest.get("source_records")
     if not isinstance(sources, list):
@@ -204,7 +252,9 @@ def check_prompts(directory=None):
             issue(name, str(exc))
     for name in set(SOURCE_RECORDS) - source_names:
         issue(name, "Expected paper source record is missing from the manifest.")
-    issue("full_paper_pipeline", "The ordinary-task workflow is executable; the paper-specific transformation and obfuscation pipeline is not implemented.")
+    if report["chain_pipeline"] != "ready":
+        issue("chain_pipeline",
+              "The attack chain prompt stages are not all wired; the pipeline reports itself incomplete.")
     return report
 
 

@@ -150,6 +150,12 @@ def load_plan(args, bundle):
     return {**check_program(program, bundle), "program": program, "source": "saved_program"}
 
 
+def run_attack(args):
+    """Dispatch the paper action-chain prompt workflow from the shared workflow module."""
+    from progprompt import attack
+    return attack.run(args)
+
+
 def add_arguments(parser):
     from progprompt.cli import TASKS
     parser.add_argument("--task", choices=sorted(TASKS), default="cup_to_counter")

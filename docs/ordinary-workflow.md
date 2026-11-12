@@ -66,4 +66,4 @@ For native Unity execution, select `--backend unity` and prepare its executable 
 
 Every run writes `report.json`. Optimized runs also write `workflow.json`, with the source verifier result, repair inputs, exact feedback, all candidates, fresh candidate verdicts, transformation indices, equivalence result and termination reason. `original-plan.py` preserves a supplied/generated program, while `plan.py` contains the selected checked program. `before_graph.json`, `after_graph.json`, `bindings.json` and `script.txt` provide backend evidence when available. The report's `backend` and upstream revision distinguish graph simulation from Unity.
 
-Only the three ordinary task contracts are supported. The full paper attack workflow remains incomplete and is reported separately by `progprompt check-prompts`.
+Only the three ordinary task contracts are supported by this workflow. The paper's action-chain prompts run through the separate [`progprompt attack`](attack-workflow.md) pipeline; the full paper pipeline remains partial because target-model querying and paper-specific simulator execution are unimplemented.

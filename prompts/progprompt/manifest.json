@@ -1,5 +1,5 @@
 {
-  "artifact_version": "1.0",
+  "artifact_version": "2.0",
   "framework": "ProgPrompt",
   "templates": [
     {
@@ -53,6 +53,52 @@
       "fields": [
         "feedback_record_json"
       ]
+    },
+    {
+      "file": "chain_command_transformer.txt",
+      "format": "double_braces",
+      "fields": [
+        "chain_context_json"
+      ]
+    },
+    {
+      "file": "chain_sanitization.txt",
+      "format": "double_braces",
+      "fields": [
+        "paper_prompt",
+        "chain_context_json"
+      ]
+    },
+    {
+      "file": "chain_dominant_action.txt",
+      "format": "double_braces",
+      "fields": [
+        "paper_prompt",
+        "chain_context_json"
+      ]
+    },
+    {
+      "file": "chain_cover_branch.txt",
+      "format": "double_braces",
+      "fields": [
+        "paper_prompt",
+        "chain_context_json"
+      ]
+    },
+    {
+      "file": "chain_fusion_runtime.txt",
+      "format": "double_braces",
+      "fields": [
+        "paper_prompt",
+        "chain_context_json"
+      ]
+    },
+    {
+      "file": "chain_repair.txt",
+      "format": "double_braces",
+      "fields": [
+        "chain_context_json"
+      ]
     }
   ],
   "source_records": [
@@ -66,7 +112,10 @@
       "provenance": "user_supplied",
       "paper_section": "5.2.2",
       "print_page": 1061,
-      "pdf_page": 5
+      "pdf_page": 5,
+      "source_sha256": "439f040e76a5b8be70f72d89e78c111fa537502500428dabe595d792ec1dcfa5",
+      "runtime_handler": "progprompt.attack.render_stage_prompt",
+      "runtime_template": "chain_sanitization.txt"
     },
     {
       "file": "dominant_action_identification.txt",
@@ -75,7 +124,10 @@
       "provenance": "user_supplied",
       "paper_section": "5.3.1",
       "print_page": 1062,
-      "pdf_page": 6
+      "pdf_page": 6,
+      "source_sha256": "52243bbe628ba4f9ca95af04d7bb31d3014aaeb5fea1e62f7a8000d8b2ba89c6",
+      "runtime_handler": "progprompt.attack.render_stage_prompt",
+      "runtime_template": "chain_dominant_action.txt"
     },
     {
       "file": "cover_branch_generation.txt",
@@ -84,7 +136,10 @@
       "provenance": "user_supplied",
       "paper_section": "5.3.2",
       "print_page": 1063,
-      "pdf_page": 7
+      "pdf_page": 7,
+      "source_sha256": "1e9830a28c9473774d769c51ad8c4bdde3f74c3d046968508d69c429149f4721",
+      "runtime_handler": "progprompt.attack.render_stage_prompt",
+      "runtime_template": "chain_cover_branch.txt"
     },
     {
       "file": "chain_fusion.txt",
@@ -93,7 +148,10 @@
       "provenance": "user_supplied",
       "paper_section": "5.3.2",
       "print_page": 1063,
-      "pdf_page": 7
+      "pdf_page": 7,
+      "source_sha256": "fcfa3dad65db7d4626010a3acd82188226d385e3a2871bcacc2d972a8553148e",
+      "runtime_handler": "progprompt.attack.render_stage_prompt",
+      "runtime_template": "chain_fusion_runtime.txt"
     }
   ]
 }

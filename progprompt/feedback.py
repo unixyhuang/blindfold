@@ -128,7 +128,8 @@ def _unique_object(pairs):
     return obj
 
 
-def _read_json(text):
+def read_json_object(text):
+    """Parse one JSON value, rejecting duplicate keys and non-finite numbers."""
     def invalid_number(value):
         raise ValueError(f"Non-finite JSON number: {value}.")
     return json.loads(text, object_pairs_hook=_unique_object, parse_constant=invalid_number)
@@ -137,7 +138,7 @@ def _read_json(text):
 def run(args):
     """Render the report prompt or verify that a model copied the complete envelope."""
     try:
-        record = _read_json(args.record.read_text(encoding="utf-8-sig"))
+        record = read_json_object(args.record.read_text(encoding="utf-8-sig"))
         expected = expected_feedback(record)
         prompt = render_feedback(record)
     except (OSError, ValueError) as error:
@@ -158,7 +159,7 @@ def run(args):
     body = reply.strip()
     fenced = re.fullmatch(r"```(?:json)?\s*\n(.*?)\n```", body, re.DOTALL | re.IGNORECASE)
     try:
-        received = _read_json(fenced.group(1) if fenced else body)
+        received = read_json_object(fenced.group(1) if fenced else body)
         # Typed JSON comparison prevents True from matching the integer 1.
         matches = json.dumps(received, sort_keys=True, ensure_ascii=False) == json.dumps(expected, sort_keys=True, ensure_ascii=False)
     except ValueError:

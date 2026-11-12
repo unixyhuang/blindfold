@@ -91,6 +91,8 @@ def add_arguments(parser):
     fuse.add_argument("--device", choices=["auto", "cpu"], default="auto")
     from progprompt import benchmark
     benchmark.add_arguments(commands.add_parser("benchmark", help="Generate and verify SafeAgentBench plans."))
+    from progprompt import attack
+    attack.add_arguments(commands.add_parser("attack", help="Run the paper's action-chain prompt pipeline."))
     for command in (render, generate, replay):
         command.add_argument("--task", choices=sorted(TASKS), default="cup_to_tray")
     fuse.add_argument("--task", choices=["apple_to_counter", "cup_to_tray"], default="cup_to_tray")
@@ -117,6 +119,9 @@ def run(args):
     if args.operation == "benchmark":
         from progprompt import benchmark
         return benchmark.run(args)
+    if args.operation == "attack":
+        from progprompt import workflow
+        return workflow.run_attack(args)
     bundle = json.loads((ROOT / "tasks" / TASKS[args.task]).read_text(encoding="utf-8"))
     if args.operation == "fuse":
         from progprompt.tabletop_merge import check_merge, render_merge_prompt

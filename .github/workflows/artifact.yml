@@ -166,7 +166,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     concurrency:
-      group: blindfold-release-v1
+      group: blindfold-release-v2
       cancel-in-progress: false
     permissions:
       contents: write
@@ -176,14 +176,14 @@ jobs:
         with:
           name: blindfold-artifact
           path: dist
-      - name: Publish verified main as v1.0
+      - name: Publish verified main as v2.0
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          tag=v1.0
+          tag=v2.0
           asset=blindfold-artifact.zip
           api="repos/$GH_REPO/releases"
           notes="Source and reproducibility materials from verified commit $GITHUB_SHA."
@@ -196,10 +196,10 @@ jobs:
           update_tag() {
             git push --force-with-lease="refs/tags/$tag:$old_tag" origin "$GITHUB_SHA:refs/tags/$tag"
           }
-          release_id=$(gh api --paginate "$api?per_page=100" --jq '.[] | select(.tag_name == "v1.0") | .id')
+          release_id=$(gh api --paginate "$api?per_page=100" --jq '.[] | select(.tag_name == "v2.0") | .id')
           if [[ -z "$release_id" ]]; then
             update_tag
-            gh release create "$tag" "dist/$asset" --verify-tag --latest --title "Blindfold 1.0" --notes "$notes"
+            gh release create "$tag" "dist/$asset" --verify-tag --latest --title "Blindfold 2.0" --notes "$notes"
           else
             # Keep the existing ZIP available during upload and validate the new bytes before promotion.
             candidate="candidate-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT.zip"
@@ -218,7 +218,7 @@ jobs:
               if [[ -n "$old_id" ]]; then rename_asset "$old_id" "$asset"; fi
               exit 1
             fi
-            gh release edit "$tag" --draft=false --latest --title "Blindfold 1.0" --notes "$notes"
+            gh release edit "$tag" --draft=false --latest --title "Blindfold 2.0" --notes "$notes"
             if [[ -n "$old_id" ]]; then gh api --silent --method DELETE "$api/assets/$old_id"; fi
           fi
           gh release download "$tag" --pattern "$asset" --output "$RUNNER_TEMP/published.zip"

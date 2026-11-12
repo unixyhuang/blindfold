@@ -13,8 +13,14 @@ The local planner combines an action interface, available objects, demonstration
 | [task_planning.txt](task_planning.txt) | Ordinary SafeAgentBench program generation from a task and room inventory | `progprompt benchmark` |
 | [verifier_feedback.txt](verifier_feedback.txt) | Read-only reporting of an existing verifier result | `progprompt feedback` |
 | [tabletop_chain_fusion.txt](tabletop_chain_fusion.txt) | Reconciliation of two partial logs of the same tabletop transfer | `progprompt fuse` |
+| [chain_command_transformer.txt](chain_command_transformer.txt) | Attack action chain from a malicious intent, action pool, and scene | `progprompt attack` |
+| [chain_sanitization.txt](chain_sanitization.txt) | Runtime wrapper around the supplied command-sanitization paper prompt | `progprompt attack` |
+| [chain_dominant_action.txt](chain_dominant_action.txt) | Runtime wrapper around the supplied dominant-action identification prompt | `progprompt attack` |
+| [chain_cover_branch.txt](chain_cover_branch.txt) | Runtime wrapper around the supplied cover branch creation/completion prompt | `progprompt attack` |
+| [chain_fusion_runtime.txt](chain_fusion_runtime.txt) | Runtime wrapper around the supplied chain fusion prompt | `progprompt attack` |
+| [chain_repair.txt](chain_repair.txt) | Planner-verifier repair from structured verifier feedback | `progprompt attack` |
 
-The separate paper-role texts listed below are supplied source material. They are not loaded by these commands. In particular, `chain_fusion.txt` describes the paper role, while `tabletop_chain_fusion.txt` implements the fixed-event ordering interface accepted by the tabletop verifier.
+The four supplied paper-role texts remain byte-identical source material. `chain_sanitization.txt`, `chain_dominant_action.txt`, `chain_cover_branch.txt`, and `chain_fusion_runtime.txt` embed them verbatim and add a runtime input field plus a strict JSON output contract. `manifest.json` records each source digest, and `check-prompts` reports a changed body as invalid. The tabletop adapter `tabletop_chain_fusion.txt` keeps its separate fixed-event ordering contract.
 
 For tabletop generation, the renderer takes the instruction and initial scene. The scene schema supplies the valid action arguments. The verifier receives the terminal goal and checks the generated actions independently. Generated programs are interpreted using the declared action language.
 
@@ -56,19 +62,31 @@ python main.py progprompt fuse --task cup_to_tray --fragments tasks/progprompt/c
 
 The runner checks complete event coverage and each fragment's order, then replays the original event actions through the tabletop verifier. The bundled cup fragments require `look → grasp → release`. A conflict reply records model abstention. A rejected candidate retains the rule that failed.
 
+## Action-chain pipeline
+
+The attack chain stages run in order: proxy planning, sanitization, dominant action identification, cover branch creation and completion, chain fusion, then a bounded planner-verifier repair loop. Each reply is validated as strict JSON before the next stage, and the fused chain is replayed by the symbolic chain verifier.
+
+```sh
+python main.py progprompt attack --task phone_into_oven --recorded --output-dir runs/attack-recorded
+python main.py progprompt attack --task phone_into_oven --render-stage chain_fusion
+```
+
+`--recorded` replays authored reference replies; `--model` runs every stage with local weights; `--responses` replays a JSON object of stage replies. The run writes each populated prompt, each raw reply, `attack.json`, and on success `final-chain.json`. [Stage contracts and symbolic verifier rules](../../docs/attack-workflow.md)
+
 ## Paper coverage
 
 | Role | Paper location | Resource and coverage |
 | --- | --- | --- |
-| Shared planning / proxy planning | §4.1, p. 1059 / PDF 3; §5.2.1, p. 1061 / PDF 5; §6.1, p. 1064 / PDF 8 | `header.txt`, `demonstrations.txt`, `query.txt`, and `task_planning.txt` provide ordinary ProgPrompt-style planning. The paper's proxy-planning example is simplified; these executable templates are adaptations. |
-| Command sanitization | §5.2.2, p. 1061 / PDF 5 | [command_sanitization.txt](command_sanitization.txt): supplied text, no runtime handler. The paper describes the role and gives before/after examples, without a separate prompt box. |
-| Dominant action identification | §5.3.1, p. 1062 / PDF 6 | [dominant_action_identification.txt](dominant_action_identification.txt): supplied text, no runtime handler. The paper gives one simplified scoring/identification example. |
-| Cover branch creation and completion | §5.3.2, p. 1063 / PDF 7 | [cover_branch_generation.txt](cover_branch_generation.txt): supplied text, no runtime handler. The paper uses one simplified prompt for both stages. |
-| Chain fusion | §5.3.2, p. 1063 / PDF 7 | [chain_fusion.txt](chain_fusion.txt): supplied text, no runtime handler. The paper gives a separate simplified example. The executable tabletop adapter is a different contract. |
-| Verifier feedback | §5.4.1, p. 1064 / PDF 8 | [verifier_feedback.txt](verifier_feedback.txt): read-only reporting adaptation. The paper describes structured feedback and iterative revision, without publishing an independent feedback prompt; its adversarial revision loop is not implemented. The separate [ordinary-task workflow](../../docs/ordinary-workflow.md) consumes structured verifier diagnostics directly. |
+| Proxy planning / command transformer | §5.2.1, p. 1061 / PDF 5 | `chain_command_transformer.txt` implements the paper's action-pool, scene-state and reasoning-process prompt for the bundled symbolic scene. |
+| Command sanitization | §5.2.2, p. 1061 / PDF 5 | [command_sanitization.txt](command_sanitization.txt) is embedded verbatim by `chain_sanitization.txt` and checked for one implicit command per action. |
+| Dominant action identification | §5.3.1, p. 1062 / PDF 6 | [dominant_action_identification.txt](dominant_action_identification.txt) is embedded verbatim by `chain_dominant_action.txt`; scores are checked against Eq. 4. |
+| Cover branch creation and completion | §5.3.2, p. 1063 / PDF 7 | [cover_branch_generation.txt](cover_branch_generation.txt) is embedded verbatim by `chain_cover_branch.txt`; the branch is executed from the predecessor state. |
+| Chain fusion | §5.3.2, p. 1063 / PDF 7 | [chain_fusion.txt](chain_fusion.txt) is embedded verbatim by `chain_fusion_runtime.txt`; both input chains must survive in order. |
+| Planner-verifier loop | §5.4.1, p. 1064 / PDF 8 | `chain_repair.txt` consumes the raw verifier report plus the shared normalized feedback envelope; `verifier/attack.py` implements the FSM of Eq. 7-10. |
+| Read-only feedback reporting | §5.4.1, p. 1064 / PDF 8 | [verifier_feedback.txt](verifier_feedback.txt) remains a separate reporting adaptation. The ordinary-task workflow consumes structured diagnostics directly. |
 
-The paper contains four simplified prompt boxes: proxy planning, dominant-action identification, cover branch generation, and chain fusion. They do not constitute complete runtime templates. The role index above covers the prompting stages described in the paper; file presence does not establish a complete reproduction. Branch creation and completion share one resource, and ordinary planning reuses the shared planner rather than separate target/proxy prompt files.
+The paper contains four simplified prompt boxes: proxy planning, dominant-action identification, cover branch generation, and chain fusion. The runtime wrappers add the missing input fields and JSON output contracts; they do not claim the paper's exact unseen examples. Branch creation and completion share one resource.
 
-The four supplied paper-role texts are registered under `paper_prompts` in [manifest.json](manifest.json). Their `provided` status means that the body exists; it does not assert exact transcription, completeness, or executable integration. Runtime templates are separately listed under `templates` and define the current command interfaces. The supplied texts are preserved without adding missing examples or task data.
+The four supplied paper-role texts are registered under `paper_prompts` in [manifest.json](manifest.json). Their `provided` status means that the body exists and matches its recorded digest; the `runtime_handler` and `runtime_template` fields connect each body to `progprompt attack`. Runtime templates are separately listed under `templates` and define the current command interfaces.
 
-Run `python main.py progprompt check-prompts` to inspect file coverage, runtime template fields, and implemented entry points. It performs no model calls and exits with code 1 while the full paper workflow is incomplete. Nonempty paper-role text does not supply its runtime handlers or paper-specific revision and simulator integration.
+Run `python main.py progprompt check-prompts` to inspect file coverage, runtime template fields, and implemented entry points. It performs no model calls and exits with code 1 while the full paper workflow is incomplete. The target embodied-LLM query and paper-specific simulator execution remain unimplemented, and are reported as the remaining components.

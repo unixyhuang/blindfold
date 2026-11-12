@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import tempfile
@@ -11,6 +12,14 @@ from progprompt.resources import PAPER_PROMPTS, RUNTIME_RESOURCES, check_prompts
 
 
 ROOT = Path(__file__).resolve().parents[1]
+PAPER_BODY = "Source asset fixture."
+PAPER_SHA256 = hashlib.sha256(PAPER_BODY.encode("utf-8")).hexdigest()
+PAPER_TEMPLATES = {
+    "command_sanitization.txt": "chain_sanitization.txt",
+    "dominant_action_identification.txt": "chain_dominant_action.txt",
+    "cover_branch_generation.txt": "chain_cover_branch.txt",
+    "chain_fusion.txt": "chain_fusion_runtime.txt",
+}
 
 
 class PromptReadinessTests(unittest.TestCase):
@@ -28,6 +37,17 @@ class PromptReadinessTests(unittest.TestCase):
             {"file": "tabletop_chat.txt", "format": "dollar", "fields": ["planning_context"]},
             {"file": "tabletop_chain_fusion.txt", "format": "double_braces", "fields": ["merge_record_json"]},
             {"file": "verifier_feedback.txt", "format": "double_braces", "fields": ["feedback_record_json"]},
+            {"file": "chain_command_transformer.txt", "format": "double_braces",
+             "fields": ["chain_context_json"]},
+            {"file": "chain_sanitization.txt", "format": "double_braces",
+             "fields": ["paper_prompt", "chain_context_json"]},
+            {"file": "chain_dominant_action.txt", "format": "double_braces",
+             "fields": ["paper_prompt", "chain_context_json"]},
+            {"file": "chain_cover_branch.txt", "format": "double_braces",
+             "fields": ["paper_prompt", "chain_context_json"]},
+            {"file": "chain_fusion_runtime.txt", "format": "double_braces",
+             "fields": ["paper_prompt", "chain_context_json"]},
+            {"file": "chain_repair.txt", "format": "double_braces", "fields": ["chain_context_json"]},
         ]
         for entry in templates:
             if entry["format"] == "dollar":
@@ -39,12 +59,15 @@ class PromptReadinessTests(unittest.TestCase):
             (self.directory / entry["file"]).write_text(body, encoding="utf-8")
         paper_prompts = []
         for name in PAPER_PROMPTS:
-            (self.directory / name).write_text("Source asset fixture.", encoding="utf-8")
+            (self.directory / name).write_text(PAPER_BODY, encoding="utf-8")
             paper_prompts.append({"file": name, "role": Path(name).stem, "status": "provided",
-                                  "paper_section": "5", "print_page": 1061, "pdf_page": 5})
+                                  "paper_section": "5", "print_page": 1061, "pdf_page": 5,
+                                  "source_sha256": PAPER_SHA256,
+                                  "runtime_handler": "progprompt.attack.render_stage_prompt",
+                                  "runtime_template": PAPER_TEMPLATES[name]})
         (self.directory / "README.md").write_text("Source index fixture.", encoding="utf-8")
         (self.directory / "manifest.json").write_text(json.dumps({
-            "artifact_version": "1.0", "framework": "ProgPrompt", "templates": templates,
+            "artifact_version": "2.0", "framework": "ProgPrompt", "templates": templates,
             "paper_prompts": paper_prompts, "source_records": ["README.md"],
         }), encoding="utf-8")
 
@@ -106,21 +129,46 @@ class PromptReadinessTests(unittest.TestCase):
         self.assertFalse(report["active_templates_ready"])
         self.assertTrue(any("runtime handler" in issue["message"] for issue in report["issues"]))
 
-    def test_provided_paper_sources_are_not_runtime_templates(self):
-        # Template-looking source text remains opaque and is never substituted.
-        (self.directory / "chain_fusion.txt").write_text("Source text: ${unclosed {{source only.", encoding="utf-8")
+    def test_provided_paper_sources_are_wrapped_as_runtime_templates(self):
+        report = check_prompts(self.directory)
+        self.assertTrue(report["paper_prompt_files_ready"])
+        self.assertEqual(report["full_paper_pipeline"], "partial")
+        self.assertGreater(len(report["missing_components"]), 0)
+        for row in report["paper_prompts"]:
+            self.assertEqual(row["status"], "wired")
+            self.assertEqual(row["runtime_handler"], "progprompt.attack.render_stage_prompt")
+            self.assertIn(row["runtime_template"], RUNTIME_RESOURCES)
+        self.assertEqual(report["source_records"], [{"file": "README.md", "status": "source_only", "runtime_handler": None}])
+
+    def test_template_looking_paper_text_stays_opaque(self):
+        # Source text is never substituted, but a body edit still breaks the digest.
+        (self.directory / "chain_fusion.txt").write_text(
+            "Source text: ${unclosed {{source only.", encoding="utf-8")
         report = check_prompts(self.directory)
         self.assertTrue(report["active_templates_ready"])
-        self.assertTrue(report["paper_prompt_files_ready"])
-        self.assertNotIn("placeholders", report)
-        self.assertEqual(report["full_paper_pipeline"], "incomplete")
-        self.assertGreater(len(report["missing_components"]), 1)
+        self.assertFalse(report["paper_prompt_files_ready"])
+        self.assertTrue(report["chain_templates_ready"])
+        self.assertEqual(report["chain_pipeline"], "not_implemented")
+        self.assertEqual(report["full_paper_pipeline"], "partial")
+
+    def test_fully_wired_chain_pipeline_reports_ready(self):
+        report = check_prompts(self.directory)
+        self.assertTrue(report["paper_prompt_runtime_ready"])
+        self.assertTrue(report["chain_templates_ready"])
+        self.assertEqual(report["chain_pipeline"], "ready")
         self.assertEqual({row["file"] for row in report["paper_prompts"]}, set(PAPER_PROMPTS))
         for row in report["paper_prompts"]:
-            self.assertEqual(row["status"], "provided")
+            self.assertEqual(row["status"], "wired")
             self.assertEqual(row["manifest_status"], "provided")
-            self.assertIsNone(row["runtime_handler"])
-        self.assertEqual(report["source_records"], [{"file": "README.md", "status": "source_only", "runtime_handler": None}])
+
+    def test_supplied_paper_bodies_are_digest_checked(self):
+        (self.directory / "chain_fusion.txt").write_text("Modified source text.", encoding="utf-8")
+        report = check_prompts(self.directory)
+        self.assertFalse(report["paper_prompt_runtime_ready"])
+        self.assertEqual(report["chain_pipeline"], "not_implemented")
+        row = next(row for row in report["paper_prompts"] if row["file"] == "chain_fusion.txt")
+        self.assertEqual(row["status"], "invalid")
+        self.assertIn("digest", row["error"])
 
     def test_missing_and_empty_paper_assets_are_explicit(self):
         name = "dominant_action_identification.txt"
@@ -135,7 +183,7 @@ class PromptReadinessTests(unittest.TestCase):
         report = check_prompts(self.directory)
         self.assertFalse(report["paper_prompt_files_ready"])
         self.assertEqual(next(row for row in report["paper_prompts"] if row["file"] == name)["status"], "invalid")
-        self.assertEqual(report["full_paper_pipeline"], "incomplete")
+        self.assertEqual(report["full_paper_pipeline"], "partial")
 
     def test_paper_manifest_requires_all_assets_and_provided_status(self):
         self.edit_manifest(lambda manifest: manifest["paper_prompts"][0].update(status="unfilled"))
@@ -164,12 +212,12 @@ class PromptReadinessTests(unittest.TestCase):
                 row = next(row for row in report["active_templates"] if row["file"] == "tabletop_chain_fusion.txt")
                 self.assertIn(error, row["error"])
 
-    def test_run_prints_incomplete_report_without_a_model(self):
+    def test_run_prints_partial_report_without_a_model(self):
         out = io.StringIO()
         with patch("hf_client.generate_text", side_effect=AssertionError("Model should not load")), redirect_stdout(out):
             code = run(Namespace(directory=self.directory))
         self.assertEqual(code, 1)
-        self.assertEqual(json.loads(out.getvalue())["full_paper_pipeline"], "incomplete")
+        self.assertEqual(json.loads(out.getvalue())["full_paper_pipeline"], "partial")
 
 
 if __name__ == "__main__":
