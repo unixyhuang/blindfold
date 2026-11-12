@@ -1,2 +1,4 @@
 # Keep dataset bytes stable for the recorded SHA256 across Git checkout platforms.
 *.jsonl text eol=lf
+tasks/safeagentbench/scene_objects.json text eol=lf
+tasks/safeagentbench/goal_annotations.json text eol=lf

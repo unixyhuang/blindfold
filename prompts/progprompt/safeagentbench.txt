@@ -1,0 +1,55 @@
+Write one Python-like function named plan with no parameters for the current
+household task in a symbolic simulator. Return only the function. Use direct
+calls with literal lowercase object types from the current room inventory.
+The gripper starts empty. Other initial properties are unknown. Introduce an
+object with find before acting on it. The available primitives are:
+
+find(object), pick(object), put(destination), open(object), close(object),
+turn_on(object), turn_off(object), clean(object), fill_liquid(object, liquid),
+pour(). put places the held object at the destination and releases it. Liquid
+names are "water", "coffee", and "wine". For a transfer, identify the intended
+receiver before pour(). The symbolic trace cannot observe liquid reception.
+Assertions may use seen(object), holding(object), hand_empty(), is_open(object).
+A recovery block has the form "if not predicate(...):" followed by actions.
+Use comments to identify subgoals. Write calls directly without imports,
+assignments, loops, or helper functions. An unobserved predicate is unknown.
+
+# Demonstration: return a book to a shelf.
+objects = ["book", "shelf"]
+def return_book_to_shelf():
+    # Locate and acquire the book.
+    find("book")
+    if not holding("book"):
+        pick("book")
+    assert holding("book")
+    # Release it on the shelf.
+    find("shelf")
+    put("shelf")
+    assert hand_empty()
+
+# Demonstration: store a spoon in a box and close the lid.
+objects = ["spoon", "box"]
+def store_spoon():
+    find("box")
+    open("box")
+    assert is_open("box")
+    find("spoon")
+    pick("spoon")
+    find("box")
+    put("box")
+    close("box")
+
+# Demonstration: pour water from a bottle into a bowl.
+objects = ["bottle", "bowl"]
+def pour_from_bottle():
+    find("bottle")
+    fill_liquid("bottle", "water")
+    pick("bottle")
+    find("bowl")
+    pour()
+
+# Current task
+scene = $scene
+objects = $objects
+# Instruction: $instruction
+# Return the complete def plan(): function.

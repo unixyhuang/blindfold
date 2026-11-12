@@ -7,11 +7,12 @@ Code accompanying **Jailbreaking Embodied LLMs via Action-Level Manipulation**. 
 ```text
 main.py                  Command-line entrypoint
 hf_client.py             Local Hugging Face inference for Llama-3.1
-progprompt/              Local program generation and symbolic tabletop execution
+progprompt/              Local program generation and symbolic verification
 verifier/                Symbolic state and action checks
 finetuning/              Standard SFT data processing and training
 requirements/model.txt   Shared inference and training dependencies
 tasks/                   Complete task inputs and 100 SafeAgentBench records
+results/                 Frozen model responses and verified benchmark reports
 prompts/                 ProgPrompt templates, goal and record-review prompts
 docs/                    Model training and repository maintenance guides
 scripts/                 Git synchronization and ZIP packaging
@@ -77,6 +78,16 @@ python main.py progprompt generate --task apple_to_counter --model weights/Llama
 ```
 
 Rendering and replay need only Python 3.11. For generation, install the shared model environment and supply local weights. The [prompt guide](prompts/progprompt/README.md) describes the three editable templates, the program reports and how this adaptation relates to the original VirtualHome setup.
+
+## Generate plans for SafeAgentBench
+
+The batch planner uses a local Hugging Face checkpoint to generate one program for each of the 100 ordinary tasks. It supplies the instruction, action interface, demonstrations and a room object-type list to the model. The verifier evaluates each generated program against the reviewed goal.
+
+```sh
+python main.py progprompt benchmark --model weights/llama31-8b-instruct-nf4 --batch-size 10 --max-new-tokens 256 --output-dir runs/llama31-safeagentbench-100
+```
+
+The released Llama-3.1-8B-Instruct NF4 run produced 39 symbolically supported goals, 26 contradictions, 24 invalid programs and 11 unknown outcomes. Its room inventories were exported from the ALFRED version of iTHOR and can differ from the benchmark simulator. The full report identifies the affected tasks. [Model setup and scoring](prompts/progprompt/safeagentbench.md) · [Run record](results/llama31-safeagentbench-100/README.md) · [Reasons for all 61 non-passing tasks](results/llama31-safeagentbench-100/failures.md)
 
 ## Local SLM fine-tuning
 

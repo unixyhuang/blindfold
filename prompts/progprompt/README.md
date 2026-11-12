@@ -1,6 +1,6 @@
 # Local ProgPrompt
 
-This implementation reproduces the prompt structure described by Singh et al. for two symbolic tabletop transfers. The upstream evaluation uses GPT completions and a VirtualHome Unity scene. Here the repository supplies a complete tabletop state and a local Hugging Face checkpoint supplies the completion. The 100 SafeAgentBench records contain scene names and recorded actions. Their missing initial object inventories make them unsuitable as inputs to this grounded planner without additional scene observations. [Authors' project](https://progprompt.github.io/) · [Official VirtualHome implementation and setup](https://github.com/NVlabs/progprompt-vh)
+This implementation reproduces the prompt structure described by Singh et al. for two symbolic tabletop transfers. The upstream evaluation uses GPT completions and a VirtualHome Unity scene. Here the repository supplies a complete tabletop state and a local Hugging Face checkpoint supplies the completion. For SafeAgentBench, a separate batch command uses independently exported object-type inventories for 75 named rooms. [100-task batch guide](safeagentbench.md) · [Authors' project](https://progprompt.github.io/) · [Official VirtualHome implementation and setup](https://github.com/NVlabs/progprompt-vh)
 
 | Prompt file | Contribution |
 | --- | --- |

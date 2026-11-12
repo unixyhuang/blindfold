@@ -48,6 +48,8 @@ def add_arguments(parser):
     render = commands.add_parser("render", help="Print the exact prompt sent to the model.")
     generate = commands.add_parser("generate", help="Generate a program locally and check it.")
     replay = commands.add_parser("replay", help="Check a saved program on its symbolic scene.")
+    from progprompt import benchmark
+    benchmark.add_arguments(commands.add_parser("benchmark", help="Generate and verify SafeAgentBench plans."))
     for command in (render, generate, replay):
         command.add_argument("--task", choices=sorted(TASKS), default="cup_to_tray")
     generate.add_argument("--model", type=Path, required=True, help="Local Hugging Face checkpoint.")
@@ -58,6 +60,9 @@ def add_arguments(parser):
 
 
 def run(args):
+    if args.operation == "benchmark":
+        from progprompt import benchmark
+        return benchmark.run(args)
     bundle = json.loads((ROOT / "tasks" / TASKS[args.task]).read_text(encoding="utf-8"))
     if args.operation == "render":
         print(render_prompt(bundle), end="")
