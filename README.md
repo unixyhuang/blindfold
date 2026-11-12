@@ -2,19 +2,9 @@
 
 Research artifact for *Jailbreaking Embodied LLMs via Action-Level Manipulation* by Xinyu Huang, Qiang Yang, Leming Shen, Zijing Ma, and Yuanqing Zheng. [Paper](https://doi.org/10.1145/3774906.3802758) · [BibTeX](CITATION.bib) · [Download the artifact](https://github.com/unixyhuang/blindfold/releases/latest/download/blindfold-artifact.zip)
 
-The public implementation generates household action plans with a local language model and checks them against symbolic goals. Bundled tabletop transfers provide explicit initial states. The supplementary SafeAgentBench adapter supports 100 ordinary tasks across 75 scenes. The implementation includes the paper's action-chain prompt pipeline (command sanitization, dominant-action identification, cover branch generation, chain fusion, and planner-verifier repair) and executes the verified chain in the bundled VirtualHome Evolving Graph engine. The target embodied-LLM query, Unity rendering/physics and the real robot arm remain unimplemented.
+The public implementation generates household action plans with a local language model and checks them against symbolic goals. Bundled tabletop transfers provide explicit initial states. The supplementary SafeAgentBench adapter supports 100 ordinary tasks across 75 scenes. The implementation includes the paper's action-chain prompt pipeline (command sanitization, dominant-action identification, cover branch generation, chain fusion, and planner-verifier repair) and executes the verified chain in the bundled VirtualHome Evolving Graph engine.
 
 This is a rolling release. For an exact citation of the code, use the Git commit identified in the [release notes](https://github.com/unixyhuang/blindfold/releases/latest).
-
-## What's new
-
-- **Action-chain prompt pipeline**: `progprompt attack` runs proxy planning → command sanitization → dominant-action identification → cover branch creation/completion → chain fusion → bounded planner-verifier repair. Every model reply is parsed as strict JSON and checked before the next stage.
-- **Paper prompts as runtime templates**: the four supplied paper prompt bodies are embedded verbatim behind recorded SHA-256 digests; `check-prompts` reports a changed body as invalid.
-- **Arbitrary original tasks**: `--task-file` accepts any task JSON with an instruction, scene, goal and malicious categories; `--retries` re-asks a rejected stage with the checker's reason.
-- **VirtualHome execution**: `--virtualhome` compiles the verified chain into native `[FIND]`/`[GRAB]`/`[OPEN]`/`[PUTIN]`/`[PUTBACK]`/`[CLOSE]` lines, executes it in the bundled Evolving Graph engine, and observes `INSIDE`, container `CLOSED` and empty hands from the returned graph.
-- **Training-free non-refusal generation**: `infer --training-free` walks decoding configurations, direct system prompts and assistant prefills until the reply is not a refusal, and records every attempt.
-- **Verified local run**: Llama-3.1-8B-Instruct NF4 produced a 15-action fused chain with zero repairs; the same chain executed in VirtualHome (24 script lines, phone inside the closed oven). Evidence and commands are in the [attack workflow guide](docs/attack-workflow.md#verified-local-run).
-- **Regression suite**: unit tests cover planning, optimization, the chain pipeline, both verifiers, the CLI, VirtualHome contracts, and training-free generation.
 
 ## Repository layout
 
